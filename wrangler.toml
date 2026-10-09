@@ -1,0 +1,8 @@
+name = "Firefly"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-10-03"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "firefly_blog_db"
+database_id = "56df97b5-9732-4854-9af6-3cb8700b7088"

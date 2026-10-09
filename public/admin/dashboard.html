@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博客管理控制台</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simplemde@1.11.2/dist/simplemde.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/simplemde@1.11.2/dist/simplemde.min.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif}
+    .container{max-width:1400px;margin:2rem auto;padding:0 1rem}
+    .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:2rem}
+    .card{padding:1.5rem;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.08)}
+    input, textarea{width:100%;padding:10px;margin:8px 0 12px;border:1px solid #e5e7eb;border-radius:6px}
+    button{padding:10px 20px;background:#3b82f6;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-right:8px}
+    .danger{background:#ef4444}
+    .post-item{padding:1rem;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>博客文章管理控制台</h1>
+      <button onclick="logout()">退出登录</button>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h3>文章编辑区</h3>
+        <input type="text" id="postSlug" placeholder="文章URL别名 例如 my-first-post">
+        <input type="text" id="postTitle" placeholder="文章标题">
+        <textarea id="postExcerpt" rows="3" placeholder="文章摘要"></textarea>
+        <textarea id="postContent" style="display:none;"></textarea>
+        <button id="savePostBtn">保存文章</button>
+        <button id="resetFormBtn" onclick="resetForm()">重置表单</button>
+      </div>
+      <div class="card">
+        <h3>已发布文章列表</h3>
+        <div id="postList"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const ADMIN_TOKEN = localStorage.getItem('ADMIN_TOKEN')
+    if(!ADMIN_TOKEN) window.location.href = 'index.html'
+    let simplemde = new SimpleMDE({ element: document.getElementById("postContent") })
+    let currentEditingPostId = null
+
+    async function loadPosts() {
+      const res = await fetch('/api/admin/posts', {headers: {'Authorization': ADMIN_TOKEN}})
+      const posts = await res.json()
+      document.getElementById('postList').innerHTML = posts.map(post => `
+        <div class="post-item">
+          <div>
+            <strong>${post.title}</strong>
+            <small style="color:#666;margin-left:10px">${post.slug}</small>
+          </div>
+          <div>
+            <button onclick="editPost(${post.id})">编辑</button>
+            <button class="danger" onclick="deletePost(${post.id})">删除</button>
+          </div>
+        </div>
+      `).join('')
+    }
+
+    window.editPost = async (postId) => {
+      currentEditingPostId = postId
+      const res = await fetch(`/api/admin/posts/${postId}`, {headers: {'Authorization': ADMIN_TOKEN}})
+      const post = await res.json()
+      document.getElementById('postSlug').value = post.slug
+      document.getElementById('postTitle').value = post.title
+      document.getElementById('postExcerpt').value = post.excerpt
+      simplemde.value(post.content)
+      document.getElementById('savePostBtn').innerText = '更新文章'
+    }
+
+    window.deletePost = async (postId) => {
+      if(!confirm('确定删除？删除后无法恢复')) return
+      await fetch(`/api/admin/posts/${postId}`, {method:'DELETE', headers: {'Authorization': ADMIN_TOKEN}})
+      loadPosts()
+    }
+
+    document.getElementById('savePostBtn').addEventListener('click', async () => {
+      const postData = {
+        slug: document.getElementById('postSlug').value.trim(),
+        title: document.getElementById('postTitle').value.trim(),
+        excerpt: document.getElementById('postExcerpt').value.trim(),
+        content: simplemde.value()
+      }
+      if(currentEditingPostId) {
+        await fetch(`/api/admin/posts/${currentEditingPostId}`, {
+          method: 'PUT',
+          headers: {'Authorization': ADMIN_TOKEN, 'Content-Type': 'application/json'},
+          body: JSON.stringify(postData)
+        })
+        alert('更新成功')
+      } else {
+        await fetch('/api/admin/posts', {
+          method: 'POST',
+          headers: {'Authorization': ADMIN_TOKEN, 'Content-Type': 'application/json'},
+          body: JSON.stringify(postData)
+        })
+        alert('保存成功')
+      }
+      resetForm()
+      loadPosts()
+    })
+
+    function resetForm() {
+      document.getElementById('postSlug').value = ''
+      document.getElementById('postTitle').value = ''
+      document.getElementById('postExcerpt').value = ''
+      simplemde.value('')
+      currentEditingPostId = null
+      document.getElementById('savePostBtn').innerText = '保存文章'
+    }
+
+    function logout() {
+      localStorage.removeItem('ADMIN_TOKEN')
+      window.location.href = 'index.html'
+    }
+
+    loadPosts()
+  </script>
+</body>
+</html>
