@@ -48,7 +48,7 @@ export const siteConfig: SiteConfig = {
 	subtitle: "twstar",
 
 	// 站点 URL
-	site_url: "https://394000.xyz",
+	site_url: "https://firefly-cv5.pages.dev",
 
 	// 站点描述
 	description:

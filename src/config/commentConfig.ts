@@ -22,8 +22,9 @@ export const commentConfig: CommentConfig = {
 
 	//waline评论系统配置
 	waline: {
-		// waline 后端服务地址
-		serverURL: "https://waline.vercel.app",
+		// waline 后端服务地址：本项目自带评论服务（functions/api/comment、functions/api/article + D1）
+		// 注意：更换博客域名后需同步修改这里，并重新发布
+		serverURL: "https://firefly-cv5.pages.dev",
 		// 设置 Waline 评论系统语言
 		lang: "zh-CN",
 		// 设置 Waline 评论系统表情地址
@@ -36,7 +37,8 @@ export const commentConfig: CommentConfig = {
 		//   'enable'   —— 默认，允许访客匿名评论和用第三方 OAuth 登录评论，兼容性最佳。
 		//   'force'    —— 强制必须登录后才能评论，适合严格社区，关闭匿名评论。
 		//   'disable'  —— 禁止所有登录和 OAuth，仅允许匿名评论（填写昵称/邮箱），适用于极简留言。
-		login: "enable",
+		// 当前自建评论服务未配置 OAuth 登录，设为 disable 以避免出现无法使用的登录入口。
+		login: "disable",
 		// 是否启用文章访问量统计功能
 		visitorCount: true,
 	},

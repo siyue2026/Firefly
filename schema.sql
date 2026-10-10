@@ -5,7 +5,13 @@ CREATE TABLE IF NOT EXISTS posts (
   excerpt TEXT,
   content TEXT NOT NULL,
   status TEXT DEFAULT 'published',
+  meta TEXT DEFAULT '{}',
+  file_path TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   published_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 已有库升级语句（新库无需执行）：
+-- ALTER TABLE posts ADD COLUMN meta TEXT DEFAULT '{}';
+-- ALTER TABLE posts ADD COLUMN file_path TEXT;

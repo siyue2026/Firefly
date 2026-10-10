@@ -1,10 +1,14 @@
 ---
 title: 草稿示例
-published: 1970-01-01
-tags: [Markdown, 博客, 演示]
+published: 1970-01-01T00:00:00.000Z
+tags:
+  - Markdown
+  - 博客
+  - 演示
 category: 文章示例
-draft: true
 slug: draft
+description: ''
+draft: true
 ---
 
 # 这篇文章是草稿

@@ -14,12 +14,6 @@
   "src:content/posts/images/both-list.avif": "e5e7e4e6e8e7e3e3e5",
   "src:content/posts/images/both-grid.avif": "d5d6d3e6e7e3d8d9e3",
   "src:content/posts/images/1.avif": "b5b0b3bcb6bbe0e0df",
-  "src:assets/images/MobileWallpaper/m6.avif": "ccd0cbdddddbcccac9",
-  "src:assets/images/MobileWallpaper/m5.avif": "e1cec9cbb9b7b19a9b",
-  "src:assets/images/MobileWallpaper/m4.avif": "c0a59ed4ac9cad8f7f",
-  "src:assets/images/MobileWallpaper/m3.avif": "c2a6b4d9c1cad2c0c9",
-  "src:assets/images/MobileWallpaper/m2.avif": "cad0c7bdc3b8ecd5cd",
-  "src:assets/images/MobileWallpaper/m1.avif": "cbcce1cbc0d69295bf",
   "src:assets/images/logo/firefly-light.png": "000000000000000000",
   "src:assets/images/logo/firefly-dark.png": "ffffffffffffffffff",
   "src:assets/images/DesktopWallpaper/d6.avif": "d9e5ec9ca7aebda9b0",
@@ -44,5 +38,8 @@
   "src:assets/images/DesktopWallpaper/4.jpg": "99b3ac9eb8b0eaf4f2",
   "src:assets/images/DesktopWallpaper/3.jpg": "fdfcfdf7f3ece5ddcf",
   "src:assets/images/DesktopWallpaper/2.jpg": "fefffff8f6efeae3d6",
-  "src:assets/images/DesktopWallpaper/1.jpg": "f5f1e7fefefffaf8f8"
+  "src:assets/images/DesktopWallpaper/1.jpg": "f5f1e7fefefffaf8f8",
+  "src:assets/images/MobileWallpaper/6.jpg": "80b2b0aabca4bbccb6",
+  "src:assets/images/MobileWallpaper/5.jpg": "72a7a9bcc7bbbcc6b5",
+  "src:assets/images/MobileWallpaper/4.jpg": "99b3ac9eb8b0eaf4f2"
 }

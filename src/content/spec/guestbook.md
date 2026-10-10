@@ -1,6 +1,6 @@
 ---
-title: "留言板"
-description: "在这里留下你的足迹"
+title: 留言板
+description: 在这里留下你的足迹
 ---
 
 - 请保持友善和尊重，营造良好的交流氛围

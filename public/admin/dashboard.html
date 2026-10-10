@@ -2,117 +2,1288 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>博客管理控制台</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simplemde@1.11.2/dist/simplemde.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/simplemde@1.11.2/dist/simplemde.min.js"></script>
+  <link rel="stylesheet" href="https://uicdn.toast.com/editor/3.2.2/toastui-editor.min.css">
+  <link rel="stylesheet" href="https://uicdn.toast.com/tui-color-picker/latest/tui-color-picker.min.css">
+  <link rel="stylesheet" href="https://uicdn.toast.com/editor-plugin-color-syntax/3.0.3/toastui-editor-plugin-color-syntax.min.css">
   <style>
     *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif}
+    img{max-width:100%}
     .container{max-width:1400px;margin:2rem auto;padding:0 1rem}
-    .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:2rem}
+    .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;gap:12px}
+    .header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    #publishStatus{font-size:12.5px;color:#6b7280;line-height:1.6;max-width:480px;word-break:break-word}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
     .card{padding:1.5rem;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.08)}
-    input, textarea{width:100%;padding:10px;margin:8px 0 12px;border:1px solid #e5e7eb;border-radius:6px}
-    button{padding:10px 20px;background:#3b82f6;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-right:8px}
-    .danger{background:#ef4444}
-    .post-item{padding:1rem;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+    .card h3{margin-bottom:6px}
+    .card-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+    input,textarea,select{width:100%;padding:10px;margin:8px 0 12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;font-size:14px}
+    textarea{resize:vertical}
+    button{padding:10px 20px;background:#3b82f6;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px}
+    button.ghost{background:#fff;color:#374151;border:1px solid #d1d5db}
+    button.danger{background:#ef4444}
+    button.small{padding:6px 12px;font-size:13px}
+    .btn-row{margin-top:6px;display:flex;flex-wrap:wrap;gap:8px}
+    .post-item{padding:1rem 0;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .tabs{display:flex;gap:4px;margin-bottom:1.5rem;border-bottom:1px solid #e5e7eb;overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .tab{background:none;color:#6b7280;border-radius:0;padding:10px 18px;font-size:15px;border-bottom:2px solid transparent;flex:0 0 auto;white-space:nowrap}
+    .tab.active{color:#3b82f6;border-bottom-color:#3b82f6;font-weight:600}
+    .field-label{display:block;font-size:13px;color:#374151;margin-top:6px;font-weight:600}
+    .hint{color:#888;font-size:12.5px;line-height:1.7;margin-bottom:8px}
+    .muted{color:#888;font-size:13px}
+    .cols2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+    .cb{display:flex;align-items:center;gap:8px;font-size:14px;color:#374151;margin:10px 0;font-weight:600;cursor:pointer}
+    .cb input{width:auto;margin:0}
+    .album-item,.song-item,.dyn-item{padding:0.9rem 0;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+    .meta{color:#888;font-size:12px;margin-top:4px;line-height:1.6;word-break:break-all}
+    #albumUrls{font-family:ui-monospace,Consolas,monospace;font-size:13px}
+    .badge{font-size:12px;padding:2px 6px;border-radius:4px;display:inline-block}
+    .badge.warn{color:#b45309;background:#fef3c7}
+    .badge.done{color:#047857;background:#d1fae5}
+    .badge.muted{color:#6b7280;background:#f3f4f6}
+    .dyn-head{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+    .dyn-preview{font-size:13.5px;color:#374151;line-height:1.6;word-break:break-word}
+    .md-fallback{min-height:220px;font-family:ui-monospace,Consolas,monospace}
+    hr{border:none;border-top:1px solid #eee;margin:1rem 0}
+    a{color:#3b82f6;cursor:pointer}
+    .actions{white-space:nowrap;display:flex;gap:8px}
+    @media (max-width:860px){
+      .container{margin:0.8rem auto;padding:0 0.7rem}
+      .grid{grid-template-columns:1fr;gap:1.2rem}
+      .card{padding:1rem}
+      .header{flex-direction:column;align-items:flex-start}
+      .header h1{font-size:1.3rem}
+      .header-actions{width:100%}
+      #publishStatus{max-width:none}
+      .cols2{grid-template-columns:1fr}
+      button{min-height:40px;padding:10px 16px}
+      button.small{min-height:36px}
+      input,select{min-height:42px}
+      .post-item,.album-item,.song-item,.dyn-item{flex-direction:column;align-items:stretch}
+      .actions{width:100%}
+      .actions button{flex:1}
+      .tabs{margin-bottom:1rem}
+      .tab{padding:10px 13px;font-size:14px}
+      .toastui-editor-defaultUI .toastui-editor-toolbar{overflow-x:auto}
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>博客文章管理控制台</h1>
-      <button onclick="logout()">退出登录</button>
-    </div>
-    <div class="grid">
-      <div class="card">
-        <h3>文章编辑区</h3>
-        <input type="text" id="postSlug" placeholder="文章URL别名 例如 my-first-post">
-        <input type="text" id="postTitle" placeholder="文章标题">
-        <textarea id="postExcerpt" rows="3" placeholder="文章摘要"></textarea>
-        <textarea id="postContent" style="display:none;"></textarea>
-        <button id="savePostBtn">保存文章</button>
-        <button id="resetFormBtn" onclick="resetForm()">重置表单</button>
-      </div>
-      <div class="card">
-        <h3>已发布文章列表</h3>
-        <div id="postList"></div>
+      <h1>博客管理控制台</h1>
+      <div class="header-actions">
+        <span id="publishStatus" hidden></span>
+        <button id="publishResetBtn" class="ghost small" hidden>重置状态</button>
+        <button id="publishBtn" title="同步线上数据并部署到博客（点击后由云端自动构建并部署，任何电脑均可操作）">发布博客</button>
+        <button class="ghost" onclick="logout()">退出登录</button>
       </div>
     </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="posts">文章管理</button>
+      <button class="tab" data-tab="dynamic">动态管理</button>
+      <button class="tab" data-tab="gallery">相册管理</button>
+      <button class="tab" data-tab="guestbook">留言板管理</button>
+      <button class="tab" data-tab="music">音乐管理</button>
+      <button class="tab" data-tab="background">背景管理</button>
+    </div>
+
+    <!-- ============ 文章管理 ============ -->
+    <section class="tab-panel" id="tab-posts">
+      <div class="grid">
+        <div class="card">
+          <h3 id="postFormTitle">新建文章</h3>
+          <label class="field-label" for="postSlug">文章网址 slug（英文/数字/-，用于生成网址）</label>
+          <input type="text" id="postSlug" placeholder="例如 my-first-post">
+          <label class="field-label" for="postTitle">文章标题</label>
+          <input type="text" id="postTitle" placeholder="文章标题">
+          <label class="field-label" for="postExcerpt">文章摘要（显示在列表页，可留空）</label>
+          <textarea id="postExcerpt" rows="2" placeholder="一句话介绍这篇文章"></textarea>
+          <label class="field-label" for="postCover">封面图片（可选，填写图片网址或仓库路径；特殊值 api 使用随机封面）</label>
+          <input type="text" id="postCover" placeholder="https://example.com/cover.jpg 或 /images/cover.jpg 或 ./images/cover.jpg 或 api">
+          <div class="hint" id="postCoverTip" hidden style="margin:-6px 0 10px"></div>
+          <div id="postCoverPreview" hidden style="margin:-4px 0 12px">
+            <img id="postCoverPreviewImg" alt="封面预览" style="max-height:150px;border-radius:8px;border:1px solid #e5e7eb">
+          </div>
+          <div class="cols2">
+            <div>
+              <label class="field-label" for="postPassword">访问密码（可选，设置后需输入密码才能查看正文）</label>
+              <input type="text" id="postPassword" placeholder="留空则不加密">
+            </div>
+            <div>
+              <label class="field-label" for="postPasswordHint">密码提示（可选，显示在密码输入框下方）</label>
+              <input type="text" id="postPasswordHint" placeholder="例如：文档密码123456">
+            </div>
+          </div>
+          <label class="field-label">正文（所见即所得：可设置颜色、加粗、插入图片，无需写代码）</label>
+          <div id="postEditor"></div>
+          <p class="hint" id="postModeHint" hidden style="margin-top:8px"></p>
+          <label class="field-label" for="postStatus">状态</label>
+          <select id="postStatus">
+            <option value="published">发布</option>
+            <option value="draft">草稿</option>
+          </select>
+          <div class="btn-row">
+            <button id="savePostBtn">保存文章</button>
+            <button class="ghost" onclick="resetForm()">清空 / 新建</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>文章列表</h3>
+          <div id="postList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 动态管理 ============ -->
+    <section class="tab-panel" id="tab-dynamic" hidden>
+      <div class="grid">
+        <div class="card">
+          <h3 id="dynFormTitle">新增动态</h3>
+          <label class="field-label">动态内容</label>
+          <div id="dynEditor"></div>
+          <div class="cols2">
+            <div>
+              <label class="field-label" for="dynPublished">发布时间</label>
+              <input type="datetime-local" id="dynPublished" step="1">
+            </div>
+            <div>
+              <label class="field-label" for="dynLocation">地点（可选）</label>
+              <input type="text" id="dynLocation" placeholder="例如 重庆">
+            </div>
+          </div>
+          <label class="cb"><input type="checkbox" id="dynPinned"> 置顶这条动态</label>
+          <div class="btn-row">
+            <button id="saveDynBtn">保存动态</button>
+            <button class="ghost" onclick="resetDynForm()">清空 / 新建</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h3>动态列表</h3>
+            <button class="small" onclick="resetDynForm()">＋ 新增动态</button>
+          </div>
+          <div id="dynList"><p class="muted">加载中…</p></div>
+          <div id="dynDeletedBox" hidden style="margin-top:1rem;border-top:1px dashed #ddd;padding-top:0.8rem">
+            <a id="dynDeletedToggle" onclick="toggleDeletedDyn()">已删除的动态（点击展开）</a>
+            <div id="dynDeletedList" hidden style="margin-top:8px"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 相册管理 ============ -->
+    <section class="tab-panel" id="tab-gallery" hidden>
+      <div class="grid">
+        <div class="card">
+          <h3 id="albumFormTitle">新增相册</h3>
+          <label class="field-label" for="albumId">相册 ID（限字母、数字、-、_；对应 public/gallery/&lt;ID&gt;/ 目录与网址）</label>
+          <input type="text" id="albumId" placeholder="例如 travel-2026">
+          <label class="field-label" for="albumName">相册名称</label>
+          <input type="text" id="albumName" placeholder="相册名称">
+          <label class="field-label" for="albumDescription">相册描述</label>
+          <textarea id="albumDescription" rows="2" placeholder="相册描述"></textarea>
+          <label class="field-label" for="albumLocation">拍摄地点</label>
+          <input type="text" id="albumLocation" placeholder="拍摄地点">
+          <label class="field-label" for="albumDate">日期</label>
+          <input type="text" id="albumDate" placeholder="例如 2026-10-03">
+          <label class="field-label" for="albumTags">标签（用英文逗号分隔）</label>
+          <input type="text" id="albumTags" placeholder="例如 travel,2026">
+          <label class="field-label" for="albumCover">封面图（可选，留空自动选择）</label>
+          <input type="text" id="albumCover" placeholder="图片 URL 或 /gallery/<ID>/cover.jpg">
+          <label class="field-label" for="albumPassword">访问密码（可选，设置后需输入密码查看）</label>
+          <input type="text" id="albumPassword" placeholder="访问密码">
+          <label class="field-label" for="albumPasswordHint">密码提示（可选）</label>
+          <input type="text" id="albumPasswordHint" placeholder="密码提示">
+          <label class="field-label" for="albumUrls">远程图片 URL 列表（每行一个）</label>
+          <textarea id="albumUrls" rows="6" placeholder="https://example.com/photo1.jpg&#10;https://example.com/photo2.webp"></textarea>
+          <div class="btn-row">
+            <button id="saveAlbumBtn">保存相册</button>
+            <button class="ghost" onclick="resetAlbumForm()">取消编辑</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>相册列表</h3>
+          <div id="albumList"><p class="muted">加载中…</p></div>
+          <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid #eee">
+            <h3>全局设置</h3>
+            <label class="field-label" for="columnWidth">瀑布流最小列宽(px)</label>
+            <input type="number" id="columnWidth" min="80" max="1000" step="10" value="240">
+            <button onclick="saveColumnWidth()">保存列宽</button>
+            <p class="hint" style="margin-top:12px">
+              本地图片：把图片文件放入 public/gallery/&lt;相册ID&gt;/ 目录（构建时自动扫描，支持 jpg/png/webp/avif/gif）。<br>
+              远程图片：在本页「远程图片 URL 列表」中维护，发布后写入对应相册的 urls.txt。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 留言板管理 ============ -->
+    <section class="tab-panel" id="tab-guestbook" hidden>
+      <div class="grid">
+        <div class="card">
+          <h3>留言板内容</h3>
+          <label class="field-label" for="gbTitle">页面标题（留空使用默认）</label>
+          <input type="text" id="gbTitle" placeholder="留言板">
+          <label class="field-label" for="gbDescription">页面描述（留空使用默认）</label>
+          <input type="text" id="gbDescription" placeholder="在这里留下你的足迹">
+          <label class="field-label">正文（显示在评论组件上方）</label>
+          <div id="gbEditor"></div>
+          <div class="btn-row" style="margin-top:10px">
+            <button id="saveGbBtn">保存留言板</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>说明</h3>
+          <p class="hint">
+            留言板正文支持所见即所得编辑，会显示在留言板页面顶部，评论组件显示在其下方。<br><br>
+            保存后点击右上角「发布博客」按钮，内容才会同步到博客页面。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 音乐管理 ============ -->
+    <section class="tab-panel" id="tab-music" hidden>
+      <div class="grid">
+        <div class="card">
+          <h3>播放器设置</h3>
+          <label class="cb"><input type="checkbox" id="mShowInNavbar"> 在导航栏显示播放器入口</label>
+          <label class="cb"><input type="checkbox" id="mShowInSidebar"> 在侧边栏显示播放器组件</label>
+          <label class="cb"><input type="checkbox" id="mShowLyrics"> 显示歌词（歌曲配好歌词后启用）</label>
+          <div class="cols2">
+            <div>
+              <label class="field-label" for="mPlayMode">播放模式</label>
+              <select id="mPlayMode">
+                <option value="list">列表循环</option>
+                <option value="one">单曲循环</option>
+                <option value="random">随机播放</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label" for="mVolume">默认音量（0 ~ 1）</label>
+              <input type="number" id="mVolume" min="0" max="1" step="0.05" value="0.7">
+            </div>
+          </div>
+          <label class="field-label" for="mMode">歌曲来源</label>
+          <select id="mMode">
+            <option value="local">本地音乐（使用下方歌曲列表，推荐）</option>
+            <option value="meting">Meting API（在线歌单）</option>
+          </select>
+          <div id="metingBox" hidden>
+            <div class="cols2">
+              <div>
+                <label class="field-label" for="mServer">音乐平台</label>
+                <select id="mServer">
+                  <option value="netease">网易云音乐</option>
+                  <option value="tencent">QQ音乐</option>
+                  <option value="kugou">酷狗音乐</option>
+                  <option value="xiami">虾米音乐</option>
+                  <option value="baidu">百度音乐</option>
+                </select>
+              </div>
+              <div>
+                <label class="field-label" for="mType">类型</label>
+                <select id="mType">
+                  <option value="song">单曲</option>
+                  <option value="playlist">歌单</option>
+                  <option value="album">专辑</option>
+                  <option value="search">搜索关键词</option>
+                  <option value="artist">艺术家</option>
+                </select>
+              </div>
+            </div>
+            <label class="field-label" for="mId">歌单 / 专辑 / 单曲 ID 或搜索关键词</label>
+            <input type="text" id="mId" placeholder="例如 10046455237">
+            <label class="field-label" for="mApi">API 地址（一般无需修改）</label>
+            <input type="text" id="mApi">
+            <label class="field-label" for="mAuth">认证 token（可选）</label>
+            <input type="text" id="mAuth">
+            <label class="field-label" for="mFallback">备用 API（每行一个，可选）</label>
+            <textarea id="mFallback" rows="2"></textarea>
+          </div>
+          <div class="btn-row" style="margin-top:10px">
+            <button id="saveMusicBtn">保存播放器设置</button>
+          </div>
+          <p class="hint" style="margin-top:10px">
+            音频文件放入 public/assets/music/ 目录，歌曲地址形如 /assets/music/文件名.mp3（也支持完整网址）。<br>
+            修改歌曲或设置后需执行「发布」，博客页面才会更新。
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h3 id="songFormTitle">新增歌曲</h3>
+            <span class="muted" id="songCount"></span>
+          </div>
+          <label class="field-label" for="songName">歌曲名称 *</label>
+          <input type="text" id="songName" placeholder="歌曲名称">
+          <label class="field-label" for="songArtist">歌手</label>
+          <input type="text" id="songArtist" placeholder="歌手">
+          <label class="field-label" for="songUrl">音频地址 *</label>
+          <input type="text" id="songUrl" placeholder="/assets/music/文件名.mp3 或完整网址">
+          <label class="field-label" for="songCover">封面地址（可选）</label>
+          <input type="text" id="songCover" placeholder="/assets/music/cover/封面.jpg">
+          <label class="field-label" for="songLrc">歌词（可选，LRC 格式或留空）</label>
+          <textarea id="songLrc" rows="3" placeholder="[00:00.00]歌词内容..."></textarea>
+          <div class="btn-row">
+            <button id="saveSongBtn">保存歌曲</button>
+            <button class="ghost" onclick="resetSongForm()">取消编辑</button>
+          </div>
+          <hr>
+          <h3>歌曲列表</h3>
+          <div id="songList"><p class="muted">加载中…</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 背景管理 ============ -->
+    <section class="tab-panel" id="tab-background" hidden>
+      <div class="grid">
+        <div class="card">
+          <h3>桌面端背景图片</h3>
+          <label class="field-label" for="bgDesktop">图片列表（每行一个，多张时每次刷新随机显示）</label>
+          <textarea id="bgDesktop" rows="7" placeholder="assets/images/DesktopWallpaper/1.jpg&#10;https://example.com/bg-desktop.jpg"></textarea>
+          <h3 style="margin-top:14px">移动端背景图片</h3>
+          <label class="field-label" for="bgMobile">图片列表（每行一个，多张时每次刷新随机显示）</label>
+          <textarea id="bgMobile" rows="7" placeholder="assets/images/MobileWallpaper/m1.avif&#10;https://example.com/bg-mobile.jpg"></textarea>
+          <div class="btn-row" style="margin-top:10px">
+            <button id="saveBgBtn">保存背景图片</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>说明</h3>
+          <p class="hint">
+            每行填写一个图片地址，支持以下三种格式：<br>
+            · 远程图片：https://example.com/bg.jpg<br>
+            · 仓库图片：把图片文件放入 src/assets/images/DesktopWallpaper/（桌面端）或 src/assets/images/MobileWallpaper/（移动端）目录，然后填写形如 assets/images/DesktopWallpaper/xxx.jpg 的路径；<br>
+            · public 目录图片：填写形如 /assets/images/xxx.jpg 的路径（对应仓库 public/assets/images/xxx.jpg）。<br><br>
+            桌面端与移动端可以配置不同的图片；某一端留空时会自动使用另一端的图片。<br>
+            保存后点击右上角「发布博客」，博客背景才会更新。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <p style="color:#888;font-size:13px;text-align:center;margin-top:1.5rem">提示：这里的修改保存在云端数据库，点击右上角「发布博客」后由云端自动完成构建与部署（约 2~4 分钟），任何能打开本控制台的设备都可发布。</p>
   </div>
+
+  <script src="https://uicdn.toast.com/editor/3.2.2/toastui-editor-all.min.js"></script>
+  <script src="https://uicdn.toast.com/tui-color-picker/latest/tui-color-picker.min.js"></script>
+  <script src="https://uicdn.toast.com/editor-plugin-color-syntax/3.0.3/toastui-editor-plugin-color-syntax.min.js"></script>
+  <script src="https://uicdn.toast.com/editor/3.2.2/i18n/zh-cn.min.js"></script>
   <script>
     const ADMIN_TOKEN = localStorage.getItem('ADMIN_TOKEN')
     if(!ADMIN_TOKEN) window.location.href = 'index.html'
-    let simplemde = new SimpleMDE({ element: document.getElementById("postContent") })
+
+    const $ = (id) => document.getElementById(id)
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
+
+    // ==================== 通用请求 ====================
+    async function apiJson(url, options = {}) {
+      const res = await fetch(url, options)
+      let data = null
+      try { data = await res.json() } catch {}
+      if(!res.ok) throw new Error((data && (data.message || data.error)) || ('HTTP ' + res.status))
+      return data
+    }
+
+    async function putSettings(key, value) {
+      return apiJson('/api/admin/settings', {
+        method: 'PUT',
+        headers: {'Authorization': ADMIN_TOKEN, 'Content-Type': 'application/json'},
+        body: JSON.stringify({key, value})
+      })
+    }
+
+    // ==================== ToastUI 编辑器封装 ====================
+    const canUseToastui = (() => { try { return typeof toastui !== 'undefined' && !!toastui.Editor } catch(e) { return false } })()
+
+    function getColorSyntaxPlugin() {
+      try {
+        const plugin = toastui.Editor.plugin || {}
+        return plugin.colorSyntax || plugin.uml || null
+      } catch(e) { return null }
+    }
+
+    function createEditor(containerId, opts = {}) {
+      const el = $(containerId)
+      const isNarrow = window.innerWidth <= 860
+      if(canUseToastui) {
+        try {
+          const colorPlugin = getColorSyntaxPlugin()
+          const editor = new toastui.Editor({
+            el,
+            height: (isNarrow ? (opts.mobileHeight || 320) : (opts.height || 460)) + 'px',
+            initialEditType: opts.initialEditType || 'wysiwyg',
+            previewStyle: isNarrow ? 'tab' : 'vertical',
+            language: 'zh-CN',
+            usageStatistics: false,
+            plugins: colorPlugin ? [colorPlugin] : []
+          })
+          return {
+            toastui: true,
+            setMarkdown(v) { editor.setMarkdown(v || '') },
+            getMarkdown() { return editor.getMarkdown() || '' },
+            changeMode(mode) { try { editor.changeMode(mode, true) } catch(e) { console.warn(e) } }
+          }
+        } catch(e) {
+          console.warn('ToastUI 编辑器初始化失败，已回退为 Markdown 源码模式', e)
+        }
+      }
+      const ta = document.createElement('textarea')
+      ta.className = 'md-fallback'
+      ta.rows = opts.fallbackRows || 12
+      ta.placeholder = '（富文本编辑器加载失败，已回退为 Markdown 源码模式）'
+      el.appendChild(ta)
+      return {
+        toastui: false,
+        setMarkdown(v) { ta.value = v || '' },
+        getMarkdown() { return ta.value },
+        changeMode() {}
+      }
+    }
+
+    const editors = { post: null, gb: null, dyn: null }
+
+    function ensureEditor(key) {
+      if(editors[key]) return editors[key]
+      if(key === 'post') {
+        editors.post = createEditor('postEditor', { height: 520, mobileHeight: 340, fallbackRows: 14 })
+      } else if(key === 'gb') {
+        editors.gb = createEditor('gbEditor', { height: 420, mobileHeight: 300 })
+        editors.gb.setMarkdown(gbContentValue)
+      } else if(key === 'dyn') {
+        editors.dyn = createEditor('dynEditor', { height: 360, mobileHeight: 260 })
+      }
+      return editors[key]
+    }
+
+    // ---------- 标签页切换 ----------
+    document.querySelectorAll('.tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn))
+        document.querySelectorAll('.tab-panel').forEach(p => { p.hidden = p.id !== 'tab-' + btn.dataset.tab })
+        if(btn.dataset.tab === 'guestbook') ensureEditor('gb')
+        if(btn.dataset.tab === 'dynamic') ensureEditor('dyn')
+      })
+    })
+
+    // ==================== 文章管理 ====================
     let currentEditingPostId = null
 
-    async function loadPosts() {
-      const res = await fetch('/api/admin/posts', {headers: {'Authorization': ADMIN_TOKEN}})
-      const posts = await res.json()
-      document.getElementById('postList').innerHTML = posts.map(post => `
+    // 正文里出现这些原生 HTML 标签时，默认用 Markdown 模式打开，避免所见即所得转换破坏代码
+    const RAW_HTML_RE = /<\s*(div|iframe|script|style|video|audio|details|summary|table|section|figure|center|font|img|svg|canvas|embed|form|input|button)\b/i
+
+    // ---------- 封面图片预览 ----------
+    function updatePostCoverPreview() {
+      const v = $('postCover').value.trim()
+      const img = $('postCoverPreviewImg')
+      const box = $('postCoverPreview')
+      const tip = $('postCoverTip')
+      if(!v) {
+        box.hidden = true
+        tip.hidden = true
+        img.removeAttribute('src')
+        return
+      }
+      if(v === 'api') {
+        box.hidden = true
+        img.removeAttribute('src')
+        tip.hidden = false
+        tip.textContent = '将自动使用随机封面图（无需填写图片地址）。'
+        return
+      }
+      if(/^https?:\/\//i.test(v) || v.startsWith('/')) {
+        box.hidden = false
+        tip.hidden = true
+        img.style.opacity = '1'
+        img.src = v
+        return
+      }
+      box.hidden = true
+      img.removeAttribute('src')
+      tip.hidden = false
+      tip.textContent = '相对路径封面（相对文章文件所在目录）无法在此预览，正常发布后会在博客中显示。'
+    }
+
+    $('postCover').addEventListener('input', updatePostCoverPreview)
+    $('postCoverPreviewImg').addEventListener('load', () => {
+      $('postCoverPreviewImg').style.opacity = '1'
+      $('postCoverTip').hidden = true
+    })
+    $('postCoverPreviewImg').addEventListener('error', () => {
+      $('postCoverPreviewImg').style.opacity = '0.2'
+      const tip = $('postCoverTip')
+      tip.hidden = false
+      tip.textContent = '图片加载失败，请检查地址是否正确。'
+    })
+
+    function renderPostList(posts) {
+      $('postList').innerHTML = posts.length ? posts.map(post => `
         <div class="post-item">
           <div>
-            <strong>${post.title}</strong>
-            <small style="color:#666;margin-left:10px">${post.slug}</small>
+            <strong>${esc(post.title)}</strong>
+            ${post.status === 'draft' ? '<span class="badge warn" style="margin-left:8px">草稿</span>' : ''}
+            <div class="meta">${esc(post.slug)} · 创建于 ${esc(String(post.created_at || '').replace('T', ' ').slice(0, 16))}</div>
           </div>
-          <div>
-            <button onclick="editPost(${post.id})">编辑</button>
-            <button class="danger" onclick="deletePost(${post.id})">删除</button>
+          <div class="actions">
+            <button class="small" onclick="editPost(${post.id})">编辑</button>
+            <button class="danger small" onclick="deletePost(${post.id})">删除</button>
           </div>
         </div>
-      `).join('')
+      `).join('') : '<p class="muted">暂无文章，可在左侧新建，或先导入已有文章。</p>'
+    }
+
+    async function loadPosts() {
+      try {
+        const posts = await apiJson('/api/admin/posts', {headers: {'Authorization': ADMIN_TOKEN}})
+        renderPostList(posts)
+      } catch(e) {
+        $('postList').innerHTML = '<p class="muted">文章加载失败：' + esc(e.message) + '</p>'
+      }
     }
 
     window.editPost = async (postId) => {
-      currentEditingPostId = postId
-      const res = await fetch(`/api/admin/posts/${postId}`, {headers: {'Authorization': ADMIN_TOKEN}})
-      const post = await res.json()
-      document.getElementById('postSlug').value = post.slug
-      document.getElementById('postTitle').value = post.title
-      document.getElementById('postExcerpt').value = post.excerpt
-      simplemde.value(post.content)
-      document.getElementById('savePostBtn').innerText = '更新文章'
+      try {
+        currentEditingPostId = postId
+        const post = await apiJson(`/api/admin/posts/${postId}`, {headers: {'Authorization': ADMIN_TOKEN}})
+        $('postFormTitle').innerText = '编辑文章：' + post.title
+        $('postSlug').value = post.slug
+        $('postTitle').value = post.title
+        $('postExcerpt').value = post.excerpt || ''
+        $('postStatus').value = post.status === 'draft' ? 'draft' : 'published'
+        let meta = {}
+        try { meta = post.meta ? JSON.parse(post.meta) : {} } catch {}
+        if(!meta || typeof meta !== 'object' || Array.isArray(meta)) meta = {}
+        $('postCover').value = meta.image || ''
+        $('postPassword').value = meta.password || ''
+        $('postPasswordHint').value = meta.passwordHint || ''
+        updatePostCoverPreview()
+        const api = ensureEditor('post')
+        api.setMarkdown(post.content || '')
+        const isMdx = !!(post.file_path && post.file_path.toLowerCase().endsWith('.mdx'))
+        const hasRawHtml = RAW_HTML_RE.test(post.content || '')
+        if(isMdx || hasRawHtml) {
+          api.changeMode('markdown')
+          $('postModeHint').hidden = false
+          $('postModeHint').textContent = isMdx
+            ? '该文章包含代码组件（.mdx），已自动用 Markdown 模式打开，避免转换破坏代码；可在编辑器右下角切回可视化模式（注意可能影响代码渲染）。'
+            : '该文章包含 HTML 代码，已自动用 Markdown 模式打开；可在编辑器右下角切换到可视化模式。'
+        } else {
+          api.changeMode('wysiwyg')
+          $('postModeHint').hidden = true
+        }
+        $('savePostBtn').innerText = '更新文章'
+        window.scrollTo({top: 0, behavior: 'smooth'})
+      } catch(e) {
+        alert('打开文章失败：' + e.message)
+      }
     }
 
     window.deletePost = async (postId) => {
-      if(!confirm('确定删除？删除后无法恢复')) return
-      await fetch(`/api/admin/posts/${postId}`, {method:'DELETE', headers: {'Authorization': ADMIN_TOKEN}})
-      loadPosts()
+      if(!confirm('确定删除这篇文章？发布后将从博客移除。')) return
+      try {
+        await apiJson(`/api/admin/posts/${postId}`, {method: 'DELETE', headers: {'Authorization': ADMIN_TOKEN}})
+        if(currentEditingPostId === postId) resetForm()
+        loadPosts()
+      } catch(e) {
+        alert('删除失败：' + e.message)
+      }
     }
 
-    document.getElementById('savePostBtn').addEventListener('click', async () => {
+    $('savePostBtn').addEventListener('click', async () => {
       const postData = {
-        slug: document.getElementById('postSlug').value.trim(),
-        title: document.getElementById('postTitle').value.trim(),
-        excerpt: document.getElementById('postExcerpt').value.trim(),
-        content: simplemde.value()
+        slug: $('postSlug').value.trim(),
+        title: $('postTitle').value.trim(),
+        excerpt: $('postExcerpt').value.trim(),
+        content: ensureEditor('post').getMarkdown(),
+        status: $('postStatus').value,
+        meta: {
+          image: $('postCover').value.trim(),
+          password: $('postPassword').value.trim(),
+          passwordHint: $('postPasswordHint').value.trim()
+        }
       }
-      if(currentEditingPostId) {
-        await fetch(`/api/admin/posts/${currentEditingPostId}`, {
-          method: 'PUT',
-          headers: {'Authorization': ADMIN_TOKEN, 'Content-Type': 'application/json'},
-          body: JSON.stringify(postData)
-        })
-        alert('更新成功')
-      } else {
-        await fetch('/api/admin/posts', {
-          method: 'POST',
-          headers: {'Authorization': ADMIN_TOKEN, 'Content-Type': 'application/json'},
-          body: JSON.stringify(postData)
-        })
-        alert('保存成功')
+      if(!postData.slug || !postData.title) { alert('slug 和标题不能为空'); return }
+      try {
+        if(currentEditingPostId) {
+          await apiJson(`/api/admin/posts/${currentEditingPostId}`, {
+            method: 'PUT',
+            headers: {'Authorization': ADMIN_TOKEN, 'Content-Type': 'application/json'},
+            body: JSON.stringify(postData)
+          })
+          alert('更新成功')
+        } else {
+          await apiJson('/api/admin/posts', {
+            method: 'POST',
+            headers: {'Authorization': ADMIN_TOKEN, 'Content-Type': 'application/json'},
+            body: JSON.stringify(postData)
+          })
+          alert('保存成功')
+        }
+        resetForm()
+        loadPosts()
+      } catch(e) {
+        alert('保存失败：' + e.message)
       }
-      resetForm()
-      loadPosts()
     })
 
     function resetForm() {
-      document.getElementById('postSlug').value = ''
-      document.getElementById('postTitle').value = ''
-      document.getElementById('postExcerpt').value = ''
-      simplemde.value('')
       currentEditingPostId = null
-      document.getElementById('savePostBtn').innerText = '保存文章'
+      $('postFormTitle').innerText = '新建文章'
+      $('postSlug').value = ''
+      $('postTitle').value = ''
+      $('postExcerpt').value = ''
+      $('postCover').value = ''
+      $('postPassword').value = ''
+      $('postPasswordHint').value = ''
+      updatePostCoverPreview()
+      $('postStatus').value = 'published'
+      const api = ensureEditor('post')
+      api.setMarkdown('')
+      api.changeMode('wysiwyg')
+      $('postModeHint').hidden = true
+      $('savePostBtn').innerText = '保存文章'
+    }
+
+    // ==================== 动态管理 ====================
+    let dynItems = []
+    let editingDynId = null
+    let showDeletedDyn = false
+
+    const pad2 = (n) => String(n).padStart(2, '0')
+
+    function fmtLocalDateTime(d) {
+      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`
+    }
+
+    function newDynId() {
+      let d = new Date()
+      const make = (dd) => `${dd.getFullYear()}-${pad2(dd.getMonth() + 1)}-${pad2(dd.getDate())}-${pad2(dd.getHours())}${pad2(dd.getMinutes())}${pad2(dd.getSeconds())}`
+      let id = make(d)
+      const ids = new Set(dynItems.map(i => i.id))
+      while(ids.has(id)) {
+        d = new Date(d.getTime() + 1000)
+        id = make(d)
+      }
+      return id
+    }
+
+    function sortDyn(list) {
+      return [...list].sort((a, b) => {
+        if(!!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1
+        return String(b.published || '').localeCompare(String(a.published || ''))
+      })
+    }
+
+    function dynPreview(item) {
+      const text = String(item.content || '')
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, '[图片]')
+        .replace(/[\r\n]+/g, ' ')
+        .trim()
+      return esc(text.slice(0, 80)) + (text.length > 80 ? '…' : '')
+    }
+
+    function renderDynList() {
+      const active = sortDyn(dynItems.filter(i => !i.deleted))
+      $('dynList').innerHTML = active.length ? active.map(item => `
+        <div class="dyn-item">
+          <div>
+            <div class="dyn-head">
+              <span class="badge muted">${esc(item.published || '未设置时间')}</span>
+              ${item.pinned ? '<span class="badge warn">置顶</span>' : ''}
+              ${item.location ? `<span class="badge done">${esc(item.location)}</span>` : ''}
+            </div>
+            <div class="dyn-preview">${dynPreview(item)}</div>
+          </div>
+          <div class="actions">
+            <button class="small" onclick="editDyn('${item.id}')">编辑</button>
+            <button class="danger small" onclick="deleteDyn('${item.id}')">删除</button>
+          </div>
+        </div>
+      `).join('') : '<p class="muted">暂无动态，点击右上角「新增动态」或左侧编辑后保存。</p>'
+
+      const deleted = sortDyn(dynItems.filter(i => i.deleted))
+      $('dynDeletedBox').hidden = deleted.length === 0
+      $('dynDeletedToggle').innerText = `已删除的动态（${deleted.length} 条，点击${showDeletedDyn ? '收起' : '展开'}）`
+      $('dynDeletedList').hidden = !showDeletedDyn
+      $('dynDeletedList').innerHTML = showDeletedDyn ? deleted.map(item => `
+        <div class="dyn-item" style="opacity:0.65">
+          <div>
+            <div class="dyn-head"><span class="badge muted">${esc(item.published || '未设置时间')}</span></div>
+            <div class="dyn-preview">${dynPreview(item)}</div>
+          </div>
+          <div class="actions">
+            <button class="small" onclick="restoreDyn('${item.id}')">恢复</button>
+          </div>
+        </div>
+      `).join('') : ''
+    }
+
+    window.toggleDeletedDyn = () => {
+      showDeletedDyn = !showDeletedDyn
+      renderDynList()
+    }
+
+    window.editDyn = (id) => {
+      const item = dynItems.find(i => i.id === id)
+      if(!item) return
+      editingDynId = id
+      $('dynFormTitle').innerText = '编辑动态（' + (item.published || '未设置时间') + '）'
+      $('dynPublished').value = item.published ? item.published.replace(' ', 'T') : ''
+      $('dynLocation').value = item.location || ''
+      $('dynPinned').checked = item.pinned === true
+      ensureEditor('dyn').setMarkdown(item.content || '')
+      window.scrollTo({top: 0, behavior: 'smooth'})
+    }
+
+    window.deleteDyn = async (id) => {
+      const item = dynItems.find(i => i.id === id)
+      if(!item) return
+      if(!confirm('删除这条动态？发布后将从博客移除（可在「已删除的动态」中恢复）。')) return
+      item.deleted = true
+      try {
+        await putSettings('dynamic', {items: dynItems})
+        if(editingDynId === id) resetDynForm()
+        renderDynList()
+      } catch(e) {
+        item.deleted = false
+        alert('删除失败：' + e.message)
+      }
+    }
+
+    window.restoreDyn = async (id) => {
+      const item = dynItems.find(i => i.id === id)
+      if(!item) return
+      delete item.deleted
+      try {
+        await putSettings('dynamic', {items: dynItems})
+        renderDynList()
+      } catch(e) {
+        item.deleted = true
+        alert('恢复失败：' + e.message)
+      }
+    }
+
+    function resetDynForm() {
+      editingDynId = null
+      $('dynFormTitle').innerText = '新增动态'
+      $('dynPublished').value = fmtLocalDateTime(new Date()).replace(' ', 'T')
+      $('dynLocation').value = ''
+      $('dynPinned').checked = false
+      ensureEditor('dyn').setMarkdown('')
+    }
+
+    $('saveDynBtn').addEventListener('click', async () => {
+      const content = ensureEditor('dyn').getMarkdown().trim()
+      if(!content) { alert('动态内容不能为空'); return }
+      let published = $('dynPublished').value.trim().replace('T', ' ')
+      if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(published)) published += ':00'
+      if(!published) published = fmtLocalDateTime(new Date())
+      const item = {
+        id: editingDynId || newDynId(),
+        published,
+        content
+      }
+      const location = $('dynLocation').value.trim()
+      if(location) item.location = location
+      if($('dynPinned').checked) item.pinned = true
+
+      const idx = dynItems.findIndex(i => i.id === item.id)
+      if(idx >= 0) {
+        if(dynItems[idx].deleted) item.deleted = true
+        dynItems[idx] = item
+      } else {
+        dynItems.push(item)
+      }
+      try {
+        await putSettings('dynamic', {items: dynItems})
+        renderDynList()
+        resetDynForm()
+        alert('动态已保存。发布后生效。')
+      } catch(e) {
+        alert('保存失败：' + e.message)
+        loadSettings()
+      }
+    })
+
+    // ==================== 相册管理 ====================
+    let gallery = { albums: [], columnWidth: 240, photoUrls: {} }
+    let editingAlbumIndex = -1
+
+    function renderAlbumList() {
+      const list = $('albumList')
+      if(!gallery.albums.length) {
+        list.innerHTML = '<p class="muted">暂无相册，可在左侧新增。</p>'
+        return
+      }
+      list.innerHTML = gallery.albums.map((a, i) => {
+        const urlCount = (gallery.photoUrls[a.id] || []).length
+        const tags = (a.tags || []).map(t => '#' + esc(t)).join(' ')
+        return `
+        <div class="album-item">
+          <div>
+            <strong>${esc(a.name)}</strong>
+            <span class="muted" style="margin-left:8px">${esc(a.id)}</span>
+            ${a.password ? '<span class="badge warn" style="margin-left:8px">已加密</span>' : ''}
+            <div class="meta">${tags ? tags + ' · ' : ''}远程图片 ${urlCount} 张${a.location ? ' · ' + esc(a.location) : ''}${a.date ? ' · ' + esc(a.date) : ''}</div>
+          </div>
+          <div class="actions">
+            <button class="small" onclick="editAlbum(${i})">编辑</button>
+            <button class="danger small" onclick="deleteAlbum(${i})">删除</button>
+          </div>
+        </div>`
+      }).join('')
+    }
+
+    window.editAlbum = (i) => {
+      const a = gallery.albums[i]
+      if(!a) return
+      editingAlbumIndex = i
+      $('albumFormTitle').innerText = '编辑相册：' + a.name
+      $('albumId').value = a.id
+      $('albumId').readOnly = true
+      $('albumId').style.background = '#f3f4f6'
+      $('albumName').value = a.name || ''
+      $('albumDescription').value = a.description || ''
+      $('albumLocation').value = a.location || ''
+      $('albumDate').value = a.date || ''
+      $('albumTags').value = (a.tags || []).join(',')
+      $('albumCover').value = a.cover || ''
+      $('albumPassword').value = a.password || ''
+      $('albumPasswordHint').value = a.passwordHint || ''
+      $('albumUrls').value = (gallery.photoUrls[a.id] || []).join('\n')
+      $('saveAlbumBtn').innerText = '更新相册'
+      window.scrollTo({top: 0, behavior: 'smooth'})
+    }
+
+    window.resetAlbumForm = () => {
+      editingAlbumIndex = -1
+      $('albumFormTitle').innerText = '新增相册'
+      for(const id of ['albumId','albumName','albumDescription','albumLocation','albumDate','albumTags','albumCover','albumPassword','albumPasswordHint','albumUrls']) {
+        $(id).value = ''
+      }
+      $('albumId').readOnly = false
+      $('albumId').style.background = ''
+      $('saveAlbumBtn').innerText = '保存相册'
+    }
+
+    window.deleteAlbum = async (i) => {
+      const a = gallery.albums[i]
+      if(!a) return
+      if(!confirm(`确定删除相册「${a.name}」？\n本地图片目录 public/gallery/${a.id}/ 不会被删除；远程图片列表会保留，便于以后恢复。`)) return
+      gallery.albums.splice(i, 1)
+      try {
+        await putSettings('gallery', gallery)
+        renderAlbumList()
+        resetAlbumForm()
+      } catch(e) {
+        alert('删除失败：' + e.message)
+        loadSettings()
+      }
+    }
+
+    $('saveAlbumBtn').addEventListener('click', async () => {
+      const id = $('albumId').value.trim()
+      const name = $('albumName').value.trim()
+      if(!id || !name) { alert('相册 ID 和名称不能为空'); return }
+      if(!/^[A-Za-z0-9_-]{1,64}$/.test(id)) {
+        alert('相册 ID 仅限字母、数字、-、_（1~64 个字符）\n它同时是网址路径和目录名，例如 ID 为 travel 对应 public/gallery/travel/')
+        return
+      }
+      const album = { id, name }
+      const description = $('albumDescription').value.trim()
+      if(description) album.description = description
+      const location = $('albumLocation').value.trim()
+      if(location) album.location = location
+      const date = $('albumDate').value.trim()
+      if(date) album.date = date
+      const tags = $('albumTags').value.split(',').map(s => s.trim()).filter(Boolean)
+      if(tags.length) album.tags = tags
+      const cover = $('albumCover').value.trim()
+      if(cover) album.cover = cover
+      const password = $('albumPassword').value
+      if(password) album.password = password
+      const passwordHint = $('albumPasswordHint').value.trim()
+      if(passwordHint) album.passwordHint = passwordHint
+
+      const urls = $('albumUrls').value.split('\n').map(s => s.trim()).filter(s => s && !s.startsWith('#'))
+
+      if(editingAlbumIndex >= 0) {
+        gallery.albums[editingAlbumIndex] = album
+      } else {
+        if(gallery.albums.some(a => a.id === id)) { alert('已存在相同 ID 的相册，如需修改请点击列表中的「编辑」'); return }
+        gallery.albums.push(album)
+      }
+      gallery.photoUrls[id] = urls
+      syncColumnWidth()
+      try {
+        await putSettings('gallery', gallery)
+        renderAlbumList()
+        resetAlbumForm()
+        alert('相册已保存。发布后生效。')
+      } catch(e) {
+        alert('保存失败：' + e.message)
+        loadSettings()
+      }
+    })
+
+    function syncColumnWidth() {
+      const v = Number($('columnWidth').value)
+      if(Number.isFinite(v) && v >= 80 && v <= 1000) gallery.columnWidth = Math.round(v)
+    }
+
+    window.saveColumnWidth = async () => {
+      syncColumnWidth()
+      try {
+        await putSettings('gallery', gallery)
+        alert('列宽已保存。发布后生效。')
+      } catch(e) {
+        alert('保存失败：' + e.message)
+      }
+    }
+
+    // ==================== 留言板管理 ====================
+    let gbContentValue = ''
+
+    $('saveGbBtn').addEventListener('click', async () => {
+      const value = {
+        title: $('gbTitle').value.trim(),
+        description: $('gbDescription').value.trim(),
+        content: ensureEditor('gb').getMarkdown()
+      }
+      try {
+        await putSettings('guestbook', value)
+        alert('留言板已保存。发布后生效。')
+      } catch(e) {
+        alert('保存失败：' + e.message)
+      }
+    })
+
+    // ==================== 音乐管理 ====================
+    function defaultMusic() {
+      return {
+        showInNavbar: true,
+        showInSidebar: true,
+        mode: 'local',
+        volume: 0.7,
+        playMode: 'list',
+        showLyrics: false,
+        meting: {
+          api: 'https://api.i-meto.com/meting/api?server=:server&type=:type&id=:id&r=:r',
+          server: 'netease',
+          type: 'playlist',
+          id: '',
+          auth: '',
+          fallbackApis: []
+        },
+        local: { playlist: [] }
+      }
+    }
+
+    let music = defaultMusic()
+    let editingSongIndex = -1
+
+    function normalizeMusic(m) {
+      const d = defaultMusic()
+      if(!m || typeof m !== 'object') return d
+      const out = {
+        showInNavbar: m.showInNavbar !== false,
+        showInSidebar: m.showInSidebar !== false,
+        mode: m.mode === 'meting' ? 'meting' : 'local',
+        volume: Number.isFinite(Number(m.volume)) ? Math.min(1, Math.max(0, Number(m.volume))) : 0.7,
+        playMode: ['list','one','random'].includes(m.playMode) ? m.playMode : 'list',
+        showLyrics: m.showLyrics === true,
+        meting: Object.assign({}, d.meting, (m.meting && typeof m.meting === 'object') ? m.meting : {}),
+        local: {
+          playlist: (m.local && Array.isArray(m.local.playlist)) ? m.local.playlist.map(s => ({
+            name: s.name || '', artist: s.artist || '', url: s.url || '', cover: s.cover || '', lrc: s.lrc || ''
+          })) : []
+        }
+      }
+      if(!Array.isArray(out.meting.fallbackApis)) out.meting.fallbackApis = []
+      return out
+    }
+
+    function fillMusicForm() {
+      $('mShowInNavbar').checked = music.showInNavbar !== false
+      $('mShowInSidebar').checked = music.showInSidebar !== false
+      $('mShowLyrics').checked = music.showLyrics === true
+      $('mPlayMode').value = music.playMode || 'list'
+      $('mVolume').value = music.volume
+      $('mMode').value = music.mode === 'meting' ? 'meting' : 'local'
+      $('mServer').value = music.meting.server || 'netease'
+      $('mType').value = music.meting.type || 'playlist'
+      $('mId').value = music.meting.id || ''
+      $('mApi').value = music.meting.api || ''
+      $('mAuth').value = music.meting.auth || ''
+      $('mFallback').value = (music.meting.fallbackApis || []).join('\n')
+      updateMetingVisibility()
+      renderSongList()
+    }
+
+    function updateMetingVisibility() {
+      $('metingBox').hidden = $('mMode').value !== 'meting'
+    }
+
+    $('mMode').addEventListener('change', updateMetingVisibility)
+
+    function renderSongList() {
+      const list = music.local.playlist
+      $('songCount').innerText = list.length ? `共 ${list.length} 首` : ''
+      $('songList').innerHTML = list.length ? list.map((s, i) => `
+        <div class="song-item">
+          <div>
+            <strong>${esc(s.name)}</strong>
+            ${s.artist ? `<span class="muted" style="margin-left:8px">${esc(s.artist)}</span>` : ''}
+            <div class="meta">${esc(s.url)}${s.cover ? ' · 有封面' : ''}${s.lrc ? ' · 有歌词' : ''}</div>
+          </div>
+          <div class="actions">
+            <button class="small" onclick="editSong(${i})">编辑</button>
+            <button class="danger small" onclick="deleteSong(${i})">删除</button>
+          </div>
+        </div>
+      `).join('') : '<p class="muted">暂无歌曲，请在上方添加。</p>'
+    }
+
+    function collectMusic() {
+      const vol = Number($('mVolume').value)
+      return {
+        showInNavbar: $('mShowInNavbar').checked,
+        showInSidebar: $('mShowInSidebar').checked,
+        mode: $('mMode').value === 'meting' ? 'meting' : 'local',
+        volume: Number.isFinite(vol) ? Math.min(1, Math.max(0, Math.round(vol * 100) / 100)) : 0.7,
+        playMode: $('mPlayMode').value,
+        showLyrics: $('mShowLyrics').checked,
+        meting: {
+          api: $('mApi').value.trim(),
+          server: $('mServer').value,
+          type: $('mType').value,
+          id: $('mId').value.trim(),
+          auth: $('mAuth').value,
+          fallbackApis: $('mFallback').value.split('\n').map(s => s.trim()).filter(Boolean)
+        },
+        local: { playlist: music.local.playlist }
+      }
+    }
+
+    window.editSong = (i) => {
+      const s = music.local.playlist[i]
+      if(!s) return
+      editingSongIndex = i
+      $('songFormTitle').innerText = '编辑歌曲：' + s.name
+      $('songName').value = s.name || ''
+      $('songArtist').value = s.artist || ''
+      $('songUrl').value = s.url || ''
+      $('songCover').value = s.cover || ''
+      $('songLrc').value = s.lrc || ''
+      $('saveSongBtn').innerText = '更新歌曲'
+      window.scrollTo({top: 0, behavior: 'smooth'})
+    }
+
+    window.resetSongForm = () => {
+      editingSongIndex = -1
+      $('songFormTitle').innerText = '新增歌曲'
+      for(const id of ['songName','songArtist','songUrl','songCover','songLrc']) $(id).value = ''
+      $('saveSongBtn').innerText = '保存歌曲'
+    }
+
+    window.deleteSong = async (i) => {
+      const s = music.local.playlist[i]
+      if(!s) return
+      if(!confirm(`确定删除歌曲「${s.name}」？`)) return
+      music.local.playlist.splice(i, 1)
+      if(editingSongIndex === i) resetSongForm()
+      if(editingSongIndex > i) editingSongIndex--
+      try {
+        await putSettings('music', collectMusic())
+        renderSongList()
+      } catch(e) {
+        alert('删除失败：' + e.message)
+        loadSettings()
+      }
+    }
+
+    $('saveSongBtn').addEventListener('click', async () => {
+      const name = $('songName').value.trim()
+      const url = $('songUrl').value.trim()
+      if(!name || !url) { alert('歌曲名称和音频地址不能为空'); return }
+      const song = {
+        name,
+        artist: $('songArtist').value.trim(),
+        url,
+        cover: $('songCover').value.trim(),
+        lrc: $('songLrc').value
+      }
+      if(editingSongIndex >= 0) {
+        music.local.playlist[editingSongIndex] = song
+      } else {
+        music.local.playlist.push(song)
+      }
+      try {
+        await putSettings('music', collectMusic())
+        renderSongList()
+        resetSongForm()
+        alert('歌曲已保存。发布后生效。')
+      } catch(e) {
+        alert('保存失败：' + e.message)
+        loadSettings()
+      }
+    })
+
+    $('saveMusicBtn').addEventListener('click', async () => {
+      try {
+        await putSettings('music', collectMusic())
+        alert('播放器设置已保存。发布后生效。')
+      } catch(e) {
+        alert('保存失败：' + e.message)
+      }
+    })
+
+    // ==================== 背景管理 ====================
+    let background = { desktop: [], mobile: [] }
+
+    function fillBackgroundForm() {
+      $('bgDesktop').value = (background.desktop || []).join('\n')
+      $('bgMobile').value = (background.mobile || []).join('\n')
+    }
+
+    $('saveBgBtn').addEventListener('click', async () => {
+      const desktop = $('bgDesktop').value.split('\n').map(s => s.trim()).filter(Boolean)
+      const mobile = $('bgMobile').value.split('\n').map(s => s.trim()).filter(Boolean)
+      if(!desktop.length && !mobile.length) { alert('桌面端和移动端至少填写一张背景图片'); return }
+      try {
+        await putSettings('background', { desktop, mobile })
+        background = { desktop, mobile }
+        alert('背景图片已保存。发布后生效。')
+      } catch(e) {
+        alert('保存失败：' + e.message)
+      }
+    })
+
+    // ==================== 快捷发布 ====================
+    function fmtPublishTime(iso) {
+      try { return new Date(iso).toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'}) } catch(e) { return '' }
+    }
+
+    function renderPublish(resp) {
+      const req = resp && resp.request
+      const btn = $('publishBtn'), st = $('publishStatus'), rst = $('publishResetBtn')
+      const busy = !!req && (req.status === 'pending' || req.status === 'running')
+      btn.disabled = busy
+      rst.hidden = !busy
+      if(!req) {
+        btn.textContent = '发布博客'
+        st.hidden = true
+        st.textContent = ''
+        return
+      }
+      st.hidden = false
+      if(req.status === 'pending') {
+        btn.textContent = '发布中…'
+        const waited = Date.now() - Date.parse(req.requestedAt || 0)
+        st.textContent = waited > 60000
+          ? '已提交发布请求，但发布通道暂未响应。可点「重置状态」后重试；也可在电脑上双击 scripts\\publish-watcher.cmd 用本机助手处理。'
+          : '已提交发布请求，正在等待发布通道处理…'
+      } else if(req.status === 'running') {
+        btn.textContent = '发布中…'
+        st.textContent = '正在同步数据、构建并部署（云端构建约 2~4 分钟），完成后此处会显示结果…'
+      } else if(req.status === 'success') {
+        btn.textContent = '发布博客'
+        st.innerHTML = '✓ 发布完成 ' + esc(fmtPublishTime(req.finishedAt)) + '（约 1 分钟后 CDN 生效）'
+          + (req.deploymentUrl ? ' <a href="' + esc(req.deploymentUrl) + '" target="_blank" rel="noopener">查看本次部署</a>' : '')
+      } else if(req.status === 'failed') {
+        btn.textContent = '重新发布'
+        st.textContent = '✗ 发布失败 ' + fmtPublishTime(req.finishedAt) + '：' + (req.message || '未知错误')
+      } else {
+        btn.textContent = '发布博客'
+        st.textContent = '发布状态已重置'
+      }
+    }
+
+    async function refreshPublishStatus() {
+      try {
+        const data = await apiJson('/api/admin/publish', {headers: {'Authorization': ADMIN_TOKEN}, cache: 'no-store'})
+        renderPublish(data)
+      } catch(e) {
+        // 静默失败，避免打断其他操作，下次轮询自动重试
+      }
+    }
+
+    $('publishBtn').addEventListener('click', async () => {
+      $('publishBtn').disabled = true
+      try {
+        const data = await apiJson('/api/admin/publish', {
+          method: 'POST',
+          headers: {'Authorization': ADMIN_TOKEN, 'Content-Type': 'application/json'},
+          body: JSON.stringify({action: 'request'})
+        })
+        renderPublish(data)
+        setTimeout(refreshPublishStatus, 2500)
+      } catch(e) {
+        if(!/已有发布任务/.test(e.message)) alert('发起发布失败：' + e.message)
+        refreshPublishStatus()
+      }
+    })
+
+    $('publishResetBtn').addEventListener('click', async () => {
+      try {
+        const data = await apiJson('/api/admin/publish', {
+          method: 'POST',
+          headers: {'Authorization': ADMIN_TOKEN, 'Content-Type': 'application/json'},
+          body: JSON.stringify({action: 'cancel'})
+        })
+        renderPublish(data)
+      } catch(e) {
+        alert('重置失败：' + e.message)
+      }
+    })
+
+    setInterval(() => { if(!document.hidden) refreshPublishStatus() }, 4000)
+    document.addEventListener('visibilitychange', () => { if(!document.hidden) refreshPublishStatus() })
+
+    // ==================== 初始化 ====================
+    async function loadSettings() {
+      try {
+        const data = await apiJson('/api/admin/settings', {headers: {'Authorization': ADMIN_TOKEN}})
+        if(data.gallery && Array.isArray(data.gallery.albums)) {
+          gallery = {
+            albums: data.gallery.albums,
+            columnWidth: data.gallery.columnWidth || 240,
+            photoUrls: data.gallery.photoUrls || {}
+          }
+        }
+        $('columnWidth').value = gallery.columnWidth
+        renderAlbumList()
+
+        if(data.guestbook) {
+          $('gbTitle').value = data.guestbook.title || ''
+          $('gbDescription').value = data.guestbook.description || ''
+          gbContentValue = data.guestbook.content || ''
+          if(editors.gb) editors.gb.setMarkdown(gbContentValue)
+        }
+
+        music = normalizeMusic(data.music)
+        fillMusicForm()
+
+        dynItems = (data.dynamic && Array.isArray(data.dynamic.items)) ? data.dynamic.items : []
+        renderDynList()
+
+        if(data.background && typeof data.background === 'object') {
+          background = {
+            desktop: Array.isArray(data.background.desktop) ? data.background.desktop : [],
+            mobile: Array.isArray(data.background.mobile) ? data.background.mobile : []
+          }
+        }
+        fillBackgroundForm()
+      } catch(e) {
+        $('albumList').innerHTML = '<p class="muted">设置加载失败：' + esc(e.message) + '</p>'
+        $('songList').innerHTML = '<p class="muted">设置加载失败：' + esc(e.message) + '</p>'
+        $('dynList').innerHTML = '<p class="muted">设置加载失败：' + esc(e.message) + '</p>'
+      }
     }
 
     function logout() {
@@ -120,7 +1291,10 @@
       window.location.href = 'index.html'
     }
 
+    ensureEditor('post')
     loadPosts()
+    loadSettings()
+    refreshPublishStatus()
   </script>
 </body>
 </html>

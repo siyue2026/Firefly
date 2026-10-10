@@ -1,4 +1,5 @@
 import type { BackgroundWallpaperConfig } from "@/types/backgroundWallpaper";
+import { backgroundWallpaperImages } from "./backgroundWallpaperImages";
 
 export const backgroundWallpaper: BackgroundWallpaperConfig = {
 	// 壁纸模式："banner" 横幅壁纸，"fullscreen" 全屏壁纸，"overlay" 覆盖透明，"none" 纯色背景无壁纸
@@ -6,56 +7,22 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 	// 是否启用背景视频播放，配置后将在导航栏显示视频播放按钮
 	playerEnable: false,
 	/**
-	 * 背景图片配置
+	 * 背景图片配置（桌面端 desktop / 移动端 mobile 的图片列表）
 	 * 图片路径支持三种格式：
 	 * 1. public 目录（以 "/" 开头，不优化）："/assets/images/banner.avif"
-	 * 2. src 目录（不以 "/" 开头，自动优化但会增加构建时间，推荐）："assets/images/banner.avif"
+	 * 2. src 目录（不以 "/" 开头，自动优化但会增加构建时间，推荐）："assets/images/DesktopWallpaper/xxx.jpg"
 	 * 3. 远程 URL："https://example.com/banner.jpg"
 	 * 注意：远程URL和public目录的图片不会被优化，请确保图片体积足够小以免影响加载速度
 	 *
-	 * 建议不要替换d1-d6，m1-m6这些默认示例图片，但你可以删除掉节省空间
-	 * 因为以后可能会更换示例图片，导致你自定义的图片被覆盖
-	 * 所以建议使用自己的图片的时候命名为其他名称，不要使用d1-d6，m1-m6这些名称
-	 *
-	 * 如果只使用一张图片或者使用随机图API，推荐直接使用字符串格式：
-	 * desktop: "https://t.alcy.cc/pc",   // 随机图API
-	 * desktop: "assets/images/DesktopWallpaper/d1.avif", // 单张图片
-	 *
-	 * mobile: "https://t.alcy.cc/mp", // 随机图API
-	 * mobile: "assets/images/MobileWallpaper/m1.avif", // 单张图片
-	 *
-	 * 支持配置多张图片（数组），每次刷新页面随机显示一张：
-	 * desktop: [
-	 * "assets/images/DesktopWallpaper/d1.avif",
-	 * "assets/images/DesktopWallpaper/d2.avif",
-	 * ],
-	 *
-	 * mobile:[
-	 *   "assets/images/MobileWallpaper/m1.avif",
-	 *   "assets/images/MobileWallpaper/m2.avif",
-	 * ],
+	 * 图片列表不再在本文件维护，而是由控制台「背景管理」编辑，
+	 * 发布时自动生成到 src/config/backgroundWallpaperImages.ts（下方直接引用）。
+	 * 支持配置多张图片，每次刷新页面随机显示一张；轮播相关设置在下方 common.carousel。
 	 */
 	src: {
-		// 桌面背景图片（支持单张或多张随机）
-		// desktop: "assets/images/DesktopWallpaper/d1.avif",
-		desktop: [
-			"assets/images/DesktopWallpaper/3.jpg",
-			"assets/images/DesktopWallpaper/2.jpg",
-			"assets/images/DesktopWallpaper/1.jpg",
-			"assets/images/DesktopWallpaper/4.jpg",
-			"assets/images/DesktopWallpaper/5.jpg",
-			"assets/images/DesktopWallpaper/6.jpg",
-		],
-		// 移动背景图片（支持单张或多张随机）
-		// mobile: "assets/images/MobileWallpaper/m1.avif",
-		mobile: [
-			"assets/images/MobileWallpaper/m1.avif",
-			"assets/images/MobileWallpaper/m2.avif",
-			"assets/images/MobileWallpaper/m3.avif",
-			"assets/images/MobileWallpaper/m4.avif",
-			"assets/images/MobileWallpaper/m5.avif",
-			"assets/images/MobileWallpaper/m6.avif",
-		],
+		// 桌面端背景图片列表（由控制台「背景管理」维护，请勿在此处手动修改）
+		desktop: backgroundWallpaperImages.desktop,
+		// 移动端背景图片列表（由控制台「背景管理」维护）
+		mobile: backgroundWallpaperImages.mobile,
 		// 背景视频播放地址
 		// 支持单个视频路径（字符串）或多个视频循环（数组，参考上面壁纸配置）
 		// 支持远程视频URL，本地视频请放在 public/assets/videos/ 目录下

@@ -1,0 +1,106 @@
+name: Cloud Publish
+
+# 云端发布：控制台点「发布博客」→ Cloudflare Pages 上的 /api/admin/publish 触发本工作流 →
+# 领取任务（claim）→ 从 D1 同步内容 → 构建 → 部署到 Cloudflare Pages → 回写结果（finish）。
+# 也可在 Actions 页面手动运行（跳过领取/回写，仅用最新代码构建部署一次）。
+
+on:
+  repository_dispatch:
+    types: [publish]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloud-publish
+  cancel-in-progress: false
+
+jobs:
+  claim:
+    if: github.event_name == 'repository_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      claimed: ${{ steps.claim.outputs.claimed }}
+    env:
+      ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+      PUBLISH_API: https://firefly-cv5.pages.dev/api/admin/publish
+    steps:
+      - name: Claim request
+        id: claim
+        run: |
+          HTTP=$(curl -s -o claim.json -w '%{http_code}' -X POST "$PUBLISH_API" \
+            -H "Authorization: $ADMIN_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"action\":\"claim\",\"id\":\"${{ github.event.client_payload.id }}\"}" || echo "000")
+          echo "claim HTTP=$HTTP"
+          cat claim.json 2>/dev/null || true
+          if [ "$HTTP" = "200" ] && grep -q '"success":true' claim.json; then
+            echo "claimed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "claimed=false" >> "$GITHUB_OUTPUT"
+            echo "任务已被其他发布通道领取或已取消，跳过构建。"
+          fi
+
+  publish:
+    needs: [claim]
+    if: always() && (github.event_name == 'workflow_dispatch' || needs.claim.outputs.claimed == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+      PUBLISH_API: https://firefly-cv5.pages.dev/api/admin/publish
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Sync content from database
+        run: node scripts/sync-d1-posts.mjs --strict
+
+      - name: Build site
+        run: pnpm run build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          pnpm exec wrangler pages deploy dist --project-name firefly --branch master --commit-dirty=true 2>&1 | tee deploy.log
+          URL=$(grep -oE 'https://[a-zA-Z0-9.-]+\.pages\.dev' deploy.log | tail -1 || true)
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "部署地址：$URL"
+
+      - name: Report success
+        if: success() && github.event_name == 'repository_dispatch'
+        run: |
+          curl -s -X POST "$PUBLISH_API" \
+            -H "Authorization: $ADMIN_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"action\":\"finish\",\"id\":\"${{ github.event.client_payload.id }}\",\"status\":\"success\",\"message\":\"云端构建部署完成\",\"deploymentUrl\":\"${{ steps.deploy.outputs.url }}\"}"
+
+      - name: Report failure
+        if: failure() && github.event_name == 'repository_dispatch'
+        run: |
+          curl -s -X POST "$PUBLISH_API" \
+            -H "Authorization: $ADMIN_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"action\":\"finish\",\"id\":\"${{ github.event.client_payload.id }}\",\"status\":\"failed\",\"message\":\"云端构建失败，详见 Actions 日志：https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"

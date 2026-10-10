@@ -47,3 +47,6 @@ package/
 .codex*
 .claude
 .mimocode
+
+# 本机专属文件（内含管理员令牌，不随仓库分发；云端发布见 .github/workflows/cloud-publish.yml）
+scripts/publish-watcher.cmd
