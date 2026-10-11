@@ -53,6 +53,25 @@
     .toastui-editor-toolbar .dash-toolbar-btn{background-color:transparent;background-image:none!important;width:auto!important;min-width:42px;padding:0 8px!important;font-size:12.5px;color:#444;cursor:pointer}
     .toastui-editor-toolbar .dash-toolbar-btn:hover{color:#3b82f6}
     .toastui-editor-toolbar .dash-toolbar-select{width:auto!important;max-width:118px;height:26px;min-height:0!important;margin:5px 3px 0!important;padding:0 2px!important;font-size:12px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#374151}
+    /* ---- 评论管理 ---- */
+    .cm-toolbar{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin:12px 0 6px}
+    .cm-chips{display:flex;gap:6px;flex-wrap:wrap}
+    .chip{padding:6px 12px;border:1px solid #d1d5db;background:#fff;color:#374151;border-radius:999px;font-size:13px;cursor:pointer}
+    .chip.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
+    .chip .chip-n{opacity:.75;font-size:12px}
+    .cm-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .cm-filters input{margin:0;width:230px}
+    .cm-filters select{margin:0;width:auto;max-width:300px}
+    .cm-item{padding:0.9rem 0;border-bottom:1px solid #eee}
+    .cm-head{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px}
+    .cm-nick{font-weight:600}
+    .cm-body{font-size:13.5px;color:#374151;line-height:1.65;word-break:break-word;white-space:pre-wrap;max-height:6.6em;overflow:hidden;cursor:pointer}
+    .cm-body.open{max-height:none}
+    .cm-meta{color:#888;font-size:12px;line-height:1.7;margin-top:4px;word-break:break-all}
+    .cm-actions{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+    .badge.spam{color:#b91c1c;background:#fee2e2}
+    .badge.reply{color:#7c3aed;background:#ede9fe}
+    .cm-pager{display:flex;gap:12px;align-items:center;justify-content:center;margin-top:1rem}
     @media (max-width:860px){
       .container{margin:0.8rem auto;padding:0 0.7rem}
       .grid{grid-template-columns:1fr;gap:1.2rem}
@@ -71,6 +90,12 @@
       .tabs{margin-bottom:1rem}
       .tab{padding:10px 13px;font-size:14px}
       .toastui-editor-defaultUI .toastui-editor-toolbar{overflow-x:auto}
+    }
+    @media (max-width:860px){
+      .cm-toolbar{flex-direction:column;align-items:stretch}
+      .cm-filters{width:100%}
+      .cm-filters input{width:100%}
+      .cm-filters select{width:100%;max-width:none}
     }
   </style>
 </head>
@@ -93,6 +118,7 @@
       <button class="tab" data-tab="guestbook">留言板管理</button>
       <button class="tab" data-tab="music">音乐管理</button>
       <button class="tab" data-tab="background">背景管理</button>
+      <button class="tab" data-tab="comments">评论管理</button>
     </div>
 
     <!-- ============ 文章管理 ============ -->
@@ -391,6 +417,36 @@
             桌面端与移动端可以配置不同的图片；某一端留空时会自动使用另一端的图片。<br>
             保存后点击右上角「发布博客」，博客背景才会更新。
           </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 评论管理 ============ -->
+    <section class="tab-panel" id="tab-comments" hidden>
+      <div class="card">
+        <div class="card-head">
+          <h3>评论管理</h3>
+          <button class="ghost small" id="cmRefreshBtn">刷新</button>
+        </div>
+        <p class="hint" style="margin:6px 0 0">评论操作实时生效（无需发布）：设为「待审 / 垃圾」的评论不会显示在博客前台；删除评论不可恢复，「删除」会同时移除其下回复。</p>
+        <div class="cm-toolbar">
+          <div class="cm-chips" id="cmStatusChips">
+            <button class="chip active" data-status="all">全部 <span class="chip-n" id="cmCountAll">0</span></button>
+            <button class="chip" data-status="approved">已通过 <span class="chip-n" id="cmCountApproved">0</span></button>
+            <button class="chip" data-status="waiting">待审核 <span class="chip-n" id="cmCountWaiting">0</span></button>
+            <button class="chip" data-status="spam">垃圾 <span class="chip-n" id="cmCountSpam">0</span></button>
+          </div>
+          <div class="cm-filters">
+            <select id="cmUrlFilter"><option value="">全部页面</option></select>
+            <input type="text" id="cmSearch" placeholder="搜索昵称 / 邮箱 / 内容 / 网址" maxlength="100">
+            <button class="small" id="cmSearchBtn">搜索</button>
+          </div>
+        </div>
+        <div id="cmList"><p class="muted">加载中…</p></div>
+        <div class="cm-pager" id="cmPager" hidden>
+          <button class="ghost small" id="cmPrevBtn">上一页</button>
+          <span class="muted" id="cmPageInfo"></span>
+          <button class="ghost small" id="cmNextBtn">下一页</button>
         </div>
       </div>
     </section>
@@ -774,6 +830,7 @@
         document.querySelectorAll('.tab-panel').forEach(p => { p.hidden = p.id !== 'tab-' + btn.dataset.tab })
         if(btn.dataset.tab === 'guestbook') ensureEditor('gb')
         if(btn.dataset.tab === 'dynamic') ensureEditor('dyn')
+        if(btn.dataset.tab === 'comments' && !cmState.loaded) { cmState.loaded = true; loadComments() }
       })
     })
 
@@ -902,6 +959,8 @@
       try {
         const posts = await apiJson('/api/admin/posts', {headers: {'Authorization': ADMIN_TOKEN}})
         fillPostSuggestions(posts)
+        postTitleBySlug = {}
+        for(const p of posts) if(p.slug) postTitleBySlug[p.slug] = p.title
         renderPostList(posts)
       } catch(e) {
         $('postList').innerHTML = '<p class="muted">文章加载失败：' + esc(e.message) + '</p>'
@@ -1657,6 +1716,169 @@
         $('dynList').innerHTML = '<p class="muted">设置加载失败：' + esc(e.message) + '</p>'
       }
     }
+
+    // ==================== 评论管理 ====================
+    let postTitleBySlug = {}
+    const cmState = { page: 1, pageSize: 20, status: 'all', search: '', url: '', totalPages: 1, loaded: false }
+
+    // 评论所在页面 → 可读名称（/guestbook/ → 留言板；/posts/<slug> → 文章标题）
+    function cmPageTitle(rawUrl) {
+      const u = String(rawUrl || '')
+      if(u === '/guestbook/' || u === '/guestbook') return '留言板'
+      const m = u.match(/^\/posts\/(.+?)\/?$/)
+      if(m) {
+        const slug = decodeURIComponent(m[1])
+        return postTitleBySlug[slug] || slug
+      }
+      return u || '(未知页面)'
+    }
+
+    function cmTimeText(iso) {
+      return String(iso || '').replace('T', ' ').slice(0, 16)
+    }
+
+    function renderCommentList(data) {
+      $('cmCountAll').textContent = data.stats.all
+      $('cmCountApproved').textContent = data.stats.approved
+      $('cmCountWaiting').textContent = data.stats.waiting
+      $('cmCountSpam').textContent = data.stats.spam
+
+      const urls = data.urls.slice()
+      const currentUrl = cmState.url
+      if(currentUrl && !urls.some(u => u.url === currentUrl)) urls.unshift({url: currentUrl, count: ''})
+      $('cmUrlFilter').innerHTML = '<option value="">全部页面</option>' + urls.map(u =>
+        `<option value="${esc(u.url)}">${esc(cmPageTitle(u.url))}${u.count === '' ? '' : '（' + u.count + '）'}</option>`
+      ).join('')
+      $('cmUrlFilter').value = currentUrl
+
+      if(!data.comments.length) {
+        $('cmList').innerHTML = '<p class="muted">没有符合条件的评论。</p>'
+      } else {
+        $('cmList').innerHTML = data.comments.map(c => {
+          const isRoot = c.rid == null
+          const badges = []
+          if(c.status === 'approved') badges.push('<span class="badge done">已通过</span>')
+          else if(c.status === 'waiting') badges.push('<span class="badge warn">待审核</span>')
+          else if(c.status === 'spam') badges.push('<span class="badge spam">垃圾</span>')
+          else badges.push('<span class="badge muted">' + esc(c.status) + '</span>')
+          if(c.sticky) badges.push('<span class="badge pin">置顶</span>')
+          if(!isRoot) badges.push('<span class="badge reply">回复' + (c.replyTo ? ' @' + esc(c.replyTo) : '') + '</span>')
+
+          const acts = []
+          if(c.status !== 'approved') acts.push(`<button class="small" onclick="cmSetStatus(${c.objectId}, 'approved')">通过</button>`)
+          if(c.status !== 'waiting') acts.push(`<button class="small ghost" onclick="cmSetStatus(${c.objectId}, 'waiting')">待审</button>`)
+          if(c.status !== 'spam') acts.push(`<button class="small ghost" onclick="cmSetStatus(${c.objectId}, 'spam')">垃圾</button>`)
+          if(isRoot) acts.push(`<button class="small ghost" onclick="cmToggleSticky(${c.objectId}, ${c.sticky ? 'false' : 'true'})">${c.sticky ? '取消置顶' : '置顶'}</button>`)
+          acts.push(`<button class="small danger" onclick="cmDelete(${c.objectId}, ${c.replyCount || 0})">删除</button>`)
+
+          const pageLink = String(c.url || '').startsWith('/')
+            ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(cmPageTitle(c.url))}</a>`
+            : esc(cmPageTitle(c.url))
+          return `<div class="cm-item">
+            <div class="cm-head">
+              <span class="cm-nick">${esc(c.nick || '匿名')}</span>
+              ${badges.join('')}
+            </div>
+            <div class="cm-body" onclick="this.classList.toggle('open')" title="点击展开 / 收起">${esc(c.comment)}</div>
+            <div class="cm-meta">
+              ${esc(cmTimeText(c.insertedAt))} · 页面：${pageLink}${c.mail ? ' · ' + esc(c.mail) : ''}${c.ip ? ' · IP ' + esc(c.ip) : ''}${c.like ? ' · 赞 ' + c.like : ''}
+            </div>
+            <div class="cm-actions">${acts.join('')}</div>
+          </div>`
+        }).join('')
+      }
+
+      $('cmPageInfo').textContent = `共 ${data.total} 条 · 第 ${data.page} / ${data.totalPages} 页`
+      $('cmPager').hidden = data.totalPages <= 1
+      $('cmPrevBtn').disabled = data.page <= 1
+      $('cmNextBtn').disabled = data.page >= data.totalPages
+    }
+
+    async function loadComments() {
+      const params = new URLSearchParams({ page: String(cmState.page), pageSize: String(cmState.pageSize), status: cmState.status })
+      if(cmState.search) params.set('search', cmState.search)
+      if(cmState.url) params.set('url', cmState.url)
+      $('cmList').innerHTML = '<p class="muted">加载中…</p>'
+      try {
+        const data = await apiJson('/api/admin/comments?' + params.toString(), {headers: {'Authorization': ADMIN_TOKEN}})
+        cmState.totalPages = data.totalPages
+        // 操作后当前页可能变空（例如删除了本页最后一条），自动回退到上一页
+        if(!data.comments.length && data.total > 0 && cmState.page > 1) {
+          cmState.page = Math.min(cmState.page - 1, data.totalPages)
+          return loadComments()
+        }
+        renderCommentList(data)
+      } catch(e) {
+        $('cmList').innerHTML = '<p class="muted">评论加载失败：' + esc(e.message) + '</p>'
+      }
+    }
+
+    window.cmSetStatus = async (id, status) => {
+      try {
+        await apiJson('/api/admin/comments/' + id, {
+          method: 'PUT',
+          headers: {'Authorization': ADMIN_TOKEN, 'Content-Type': 'application/json'},
+          body: JSON.stringify({status})
+        })
+        loadComments()
+      } catch(e) {
+        alert('操作失败：' + e.message)
+      }
+    }
+
+    window.cmToggleSticky = async (id, sticky) => {
+      try {
+        await apiJson('/api/admin/comments/' + id, {
+          method: 'PUT',
+          headers: {'Authorization': ADMIN_TOKEN, 'Content-Type': 'application/json'},
+          body: JSON.stringify({sticky})
+        })
+        loadComments()
+      } catch(e) {
+        alert('操作失败：' + e.message)
+      }
+    }
+
+    window.cmDelete = async (id, replyCount) => {
+      const extra = replyCount > 0 ? `其下 ${replyCount} 条回复将一并删除，` : ''
+      if(!confirm(`确定删除这条评论？${extra}删除后不可恢复。`)) return
+      try {
+        await apiJson('/api/admin/comments/' + id + '?cascade=1', {method: 'DELETE', headers: {'Authorization': ADMIN_TOKEN}})
+        loadComments()
+      } catch(e) {
+        alert('删除失败：' + e.message)
+      }
+    }
+
+    document.querySelectorAll('#cmStatusChips .chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('#cmStatusChips .chip').forEach(c => c.classList.toggle('active', c === chip))
+        cmState.status = chip.dataset.status
+        cmState.page = 1
+        loadComments()
+      })
+    })
+
+    $('cmSearchBtn').addEventListener('click', () => {
+      cmState.search = $('cmSearch').value.trim()
+      cmState.page = 1
+      loadComments()
+    })
+    $('cmSearch').addEventListener('keydown', (e) => {
+      if(e.key === 'Enter') {
+        cmState.search = $('cmSearch').value.trim()
+        cmState.page = 1
+        loadComments()
+      }
+    })
+    $('cmUrlFilter').addEventListener('change', () => {
+      cmState.url = $('cmUrlFilter').value
+      cmState.page = 1
+      loadComments()
+    })
+    $('cmRefreshBtn').addEventListener('click', () => loadComments())
+    $('cmPrevBtn').addEventListener('click', () => { if(cmState.page > 1) { cmState.page -= 1; loadComments() } })
+    $('cmNextBtn').addEventListener('click', () => { if(cmState.page < cmState.totalPages) { cmState.page += 1; loadComments() } })
 
     function logout() {
       localStorage.removeItem('ADMIN_TOKEN')
