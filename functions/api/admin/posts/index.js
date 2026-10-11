@@ -6,7 +6,7 @@ export async function onRequestGet(context) {
   const authFail = await authCheck(request, env)
   if(authFail) return authFail
 
-  const { results } = await env.DB.prepare("SELECT id, title, slug, status, created_at FROM posts WHERE status != 'deleted' ORDER BY created_at DESC, id DESC").all()
+  const { results } = await env.DB.prepare("SELECT id, title, slug, status, created_at, meta FROM posts WHERE status != 'deleted' ORDER BY created_at DESC, id DESC").all()
   return Response.json(results)
 }
 

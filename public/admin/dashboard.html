@@ -42,12 +42,17 @@
     .badge.warn{color:#b45309;background:#fef3c7}
     .badge.done{color:#047857;background:#d1fae5}
     .badge.muted{color:#6b7280;background:#f3f4f6}
+    .badge.pin{color:#1d4ed8;background:#dbeafe}
     .dyn-head{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
     .dyn-preview{font-size:13.5px;color:#374151;line-height:1.6;word-break:break-word}
     .md-fallback{min-height:220px;font-family:ui-monospace,Consolas,monospace}
     hr{border:none;border-top:1px solid #eee;margin:1rem 0}
     a{color:#3b82f6;cursor:pointer}
     .actions{white-space:nowrap;display:flex;gap:8px}
+    .editor-status-line{display:flex;justify-content:flex-end;margin:-4px 0 10px;font-size:12.5px;color:#888}
+    .toastui-editor-toolbar .dash-toolbar-btn{background-color:transparent;background-image:none!important;width:auto!important;min-width:42px;padding:0 8px!important;font-size:12.5px;color:#444;cursor:pointer}
+    .toastui-editor-toolbar .dash-toolbar-btn:hover{color:#3b82f6}
+    .toastui-editor-toolbar .dash-toolbar-select{width:auto!important;max-width:118px;height:26px;min-height:0!important;margin:5px 3px 0!important;padding:0 2px!important;font-size:12px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#374151}
     @media (max-width:860px){
       .container{margin:0.8rem auto;padding:0 0.7rem}
       .grid{grid-template-columns:1fr;gap:1.2rem}
@@ -117,8 +122,31 @@
               <input type="text" id="postPasswordHint" placeholder="例如：文档密码123456">
             </div>
           </div>
-          <label class="field-label">正文（所见即所得：可设置颜色、加粗、插入图片，无需写代码）</label>
+          <div class="cols2">
+            <div>
+              <label class="field-label" for="postTags">标签（可选，用逗号分隔，会显示在文章页与列表）</label>
+              <input type="text" id="postTags" list="postTagsList" placeholder="例如 教程, Astro">
+              <datalist id="postTagsList"></datalist>
+            </div>
+            <div>
+              <label class="field-label" for="postSeries">合集（可选，同一合集的文章会显示系列导航）</label>
+              <input type="text" id="postSeries" list="postSeriesList" placeholder="例如 建站日志">
+              <datalist id="postSeriesList"></datalist>
+            </div>
+          </div>
+          <div class="cols2">
+            <div>
+              <label class="field-label" for="postSeriesOrder">合集序号（可选，合集内排序用，数字越小越靠前）</label>
+              <input type="number" id="postSeriesOrder" min="0" max="999" step="1" placeholder="例如 1">
+            </div>
+            <div>
+              <label class="field-label">置顶</label>
+              <label class="cb" style="margin-top:14px"><input type="checkbox" id="postPinned"> 置顶这篇文章（列表页优先展示）</label>
+            </div>
+          </div>
+          <label class="field-label">正文（所见即所得：可设置颜色、加粗、居中、字体字号、首行缩进，插入图片，无需写代码）</label>
           <div id="postEditor"></div>
+          <div class="editor-status-line"><span id="postWordCount">字数 0 · 字符 0</span></div>
           <p class="hint" id="postModeHint" hidden style="margin-top:8px"></p>
           <label class="field-label" for="postStatus">状态</label>
           <select id="postStatus">
@@ -408,13 +436,276 @@
       } catch(e) { return null }
     }
 
+    // ==================== 文章编辑器增强：撤销/重做/居中/字体字号/首行缩进 ====================
+    // 实现说明：字体、字号、居中、缩进统一用 <span style="..."> 内联样式表达（与颜色功能机制一致），
+    // 保证在 所见即所得 / Markdown 两种模式下以及博客渲染时都能正确往返。
+    // 段落的「居中」与「首行缩进」需要块级盒模型，所以样式里带 display: block。
+
+    const DASH_FONT_FAMILIES = [
+      { label: '默认字体', value: '' },
+      { label: '微软雅黑', value: 'Microsoft YaHei, 微软雅黑, sans-serif' },
+      { label: '宋体', value: 'SimSun, 宋体, serif' },
+      { label: '黑体', value: 'SimHei, 黑体, sans-serif' },
+      { label: '楷体', value: 'KaiTi, 楷体, serif' },
+      { label: '仿宋', value: 'FangSong, 仿宋, serif' }
+    ]
+
+    const DASH_FONT_SIZES = [
+      { label: '默认字号', value: '' },
+      { label: '12px', value: '12px' },
+      { label: '14px', value: '14px' },
+      { label: '16px', value: '16px' },
+      { label: '18px', value: '18px' },
+      { label: '20px', value: '20px' },
+      { label: '24px', value: '24px' },
+      { label: '28px', value: '28px' },
+      { label: '32px', value: '32px' }
+    ]
+
+    const DASH_FEATURE_CENTER = { toggle: true, pairs: [['text-align', 'center'], ['display', 'block']] }
+    const DASH_FEATURE_INDENT = { toggle: true, pairs: [['text-indent', '2em'], ['display', 'block']] }
+
+    // ---- 样式工具（纯函数，与编辑器实例无关） ----
+    function normStyle(s) {
+      return String(s || '').replace(/\s+/g, '').toLowerCase()
+    }
+
+    function parseStylePairs(styleStr) {
+      const pairs = []
+      String(styleStr || '').split(';').forEach(part => {
+        const idx = part.indexOf(':')
+        if(idx < 0) return
+        const k = part.slice(0, idx).trim()
+        const v = part.slice(idx + 1).trim()
+        if(k && v) pairs.push([k, v])
+      })
+      return pairs
+    }
+
+    function serializeStylePairs(pairs) {
+      return pairs.map(([k, v]) => k + ': ' + v).join('; ')
+    }
+
+    function setStylePair(pairs, prop, value) {
+      const lp = prop.toLowerCase()
+      const idx = pairs.findIndex(([k]) => k.toLowerCase() === lp)
+      if(value) {
+        if(idx >= 0) pairs[idx][1] = value
+        else pairs.push([prop, value])
+      } else if(idx >= 0) {
+        pairs.splice(idx, 1)
+      }
+      return pairs
+    }
+
+    const SPAN_BLOCK_RE = /^<span style=("([^"]*)"|'([^']*)')>([\s\S]*?)<\/span>$/
+
+    // 处理 Markdown 模式下的一行文本。op 为 { toggle: true, pairs } 或 { prop, value }。
+    // 整行是 <span style="...">...</span> 时原地增删样式；否则按需在行外层包一层 span。
+    function transformMdLine(line, op) {
+      const m = line.match(SPAN_BLOCK_RE)
+      if(m) {
+        const styles = m[2] !== undefined ? m[2] : m[3]
+        const inner = m[4]
+        const pairs = parseStylePairs(styles)
+        if(op.toggle) {
+          const hasValue = op.pairs.every(([k, v]) =>
+            pairs.some(([pk, pv]) => pk.toLowerCase() === k.toLowerCase() && normStyle(pv) === normStyle(v)))
+          op.pairs.forEach(([k, v]) => setStylePair(pairs, k, hasValue ? '' : v))
+        } else {
+          setStylePair(pairs, op.prop, op.value)
+        }
+        return pairs.length ? '<span style="' + serializeStylePairs(pairs) + '">' + inner + '</span>' : inner
+      }
+      if(op.toggle) {
+        if(normStyle(line).includes(normStyle(serializeStylePairs(op.pairs)))) return line
+        return '<span style="' + serializeStylePairs(op.pairs) + '">' + line + '</span>'
+      }
+      if(!op.value) return line
+      return '<span style="' + op.prop + ': ' + op.value + '">' + line + '</span>'
+    }
+
+    // 统计字数：中文字符按字计，英文/数字按词计；字符数按原文长度
+    function countArticleWords(md) {
+      const text = String(md || '')
+      const cjkRe = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/g
+      const cjk = (text.match(cjkRe) || []).length
+      const words = (text.replace(cjkRe, ' ').match(/[A-Za-z0-9][A-Za-z0-9_'’-]*/g) || []).length
+      return { words: cjk + words, chars: text.length }
+    }
+
+    // 所见即所得模式的样式命令：对选中范围内的 span 标记增删样式
+    function makeWwStyleHandler(op) {
+      return function(payload, state, dispatch, view) {
+        const spanType = state.schema.marks.span
+        if(!spanType) return false
+        let from = state.selection.from
+        let to = state.selection.to
+        if(from === to) {
+          const $from = state.selection.$from
+          if(!$from.parent || !$from.parent.isTextblock) return false
+          from = $from.start()
+          to = $from.end()
+        }
+        if(from >= to) return false
+        const primary = op.toggle ? op.pairs[0][0] : op.prop
+        const styleOf = (m) => normStyle(m.attrs && m.attrs.htmlAttrs && m.attrs.htmlAttrs.style)
+        const hits = []
+        state.doc.nodesBetween(from, to, (node, pos) => {
+          if(!node.isText) return
+          node.marks.forEach(m => {
+            if(m.type.name === 'span' && styleOf(m).includes(normStyle(primary))) {
+              const s = Math.max(pos, from)
+              const e = Math.min(pos + node.nodeSize, to)
+              if(s < e) hits.push({ mark: m, from: s, to: e })
+            }
+          })
+        })
+        let nextStyle = ''
+        if(op.toggle) {
+          const hasValue = hits.some(h => op.pairs.every(([k, v]) => styleOf(h.mark).includes(normStyle(k + ': ' + v))))
+          nextStyle = hasValue ? '' : serializeStylePairs(op.pairs)
+        } else {
+          const value = String((payload && payload.value) || '')
+          nextStyle = value ? op.prop + ': ' + value : ''
+        }
+        const tr = state.tr
+        hits.forEach(h => tr.removeMark(h.from, h.to, h.mark))
+        if(nextStyle) tr.addMark(from, to, spanType.create({ htmlAttrs: { style: nextStyle } }))
+        dispatch(tr)
+        view.focus()
+        return true
+      }
+    }
+
+    // Markdown 模式的样式命令：按文本块、逐行处理原始文本
+    function makeMdStyleHandler(op) {
+      return function(payload, state, dispatch, view) {
+        let from = state.selection.from
+        let to = state.selection.to
+        if(from === to) {
+          const $from = state.selection.$from
+          if(!$from.parent || !$from.parent.isTextblock) return false
+          from = $from.start()
+          to = $from.end()
+        }
+        if(from >= to) return false
+        const resolved = op.toggle ? op : { prop: op.prop, value: String((payload && payload.value) || '') }
+        const blocks = []
+        state.doc.nodesBetween(from, to, (node, pos) => {
+          if(node.isTextblock) {
+            const s = Math.max(pos + 1, from)
+            const e = Math.min(pos + node.nodeSize - 1, to)
+            if(s < e) blocks.push({ from: s, to: e })
+            return false
+          }
+        })
+        if(!blocks.length) return false
+        const tr = state.tr
+        let changed = false
+        for(let i = blocks.length - 1; i >= 0; i--) {
+          const b = blocks[i]
+          const raw = tr.doc.textBetween(b.from, b.to, '\n', '\n')
+          const next = raw.split('\n').map(line => transformMdLine(line, resolved)).join('\n')
+          if(next !== raw) {
+            if(next === '') tr.delete(b.from, b.to)
+            else tr.replaceWith(b.from, b.to, state.schema.text(next))
+            changed = true
+          }
+        }
+        if(!changed) return false
+        dispatch(tr)
+        view.focus()
+        return true
+      }
+    }
+
+    // 下拉选择控件：原生 select 只在“值变化”时触发 change，
+    // 因此加一个不可选的占位项，每次应用后重置回占位项，
+    // 保证「再次选同一字号」或「选默认值清除样式」都能可靠触发。
+    const DASH_SELECT_PLACEHOLDER = '__dash_placeholder__'
+    function makeDashToolbarSelect(name, placeholderLabel, tooltip, options, command) {
+      const sel = document.createElement('select')
+      sel.className = 'dash-toolbar-select'
+      sel.title = tooltip
+      const placeholder = document.createElement('option')
+      placeholder.value = DASH_SELECT_PLACEHOLDER
+      placeholder.textContent = placeholderLabel
+      placeholder.disabled = true
+      sel.appendChild(placeholder)
+      options.forEach(o => {
+        const opt = document.createElement('option')
+        opt.value = o.value
+        opt.textContent = o.label
+        sel.appendChild(opt)
+      })
+      sel.value = DASH_SELECT_PLACEHOLDER
+      return {
+        name,
+        tooltip,
+        el: sel,
+        onMounted(execCommand) {
+          sel.addEventListener('change', () => {
+            const v = sel.value
+            sel.value = DASH_SELECT_PLACEHOLDER
+            if(v === DASH_SELECT_PLACEHOLDER) return
+            execCommand(command, { value: v })
+          })
+        }
+      }
+    }
+
+    // 构建文章编辑器的增强工具栏与样式命令（仅文章编辑器使用）
+    function buildPostEditorEnhancement() {
+      const familySelect = makeDashToolbarSelect('dashFontFamily', '字体', '字体（对选中内容或光标所在段落生效）', DASH_FONT_FAMILIES, 'dashFontFamily')
+      const sizeSelect = makeDashToolbarSelect('dashFontSize', '字号', '字号（对选中内容或光标所在段落生效）', DASH_FONT_SIZES, 'dashFontSize')
+      const toolbarItems = [
+        ['heading', 'bold', 'italic', 'strike'],
+        ['hr', 'quote'],
+        ['ul', 'ol', 'task', 'indent', 'outdent'],
+        ['table', 'image', 'link'],
+        ['code', 'codeblock'],
+        ['scrollSync'],
+        [
+          { name: 'dashUndo', className: 'dash-toolbar-btn', text: '撤销', tooltip: '撤销（Ctrl+Z）', command: 'undo' },
+          { name: 'dashRedo', className: 'dash-toolbar-btn', text: '重做', tooltip: '重做（Ctrl+Shift+Z）', command: 'redo' }
+        ],
+        [
+          { name: 'dashCenter', className: 'dash-toolbar-btn', text: '居中', tooltip: '居中 / 取消居中（对选中内容或光标所在段落生效）', command: 'dashCenter' },
+          { name: 'dashIndent', className: 'dash-toolbar-btn', text: '首行缩进', tooltip: '首行缩进两字符 / 取消（对选中内容或光标所在段落生效）', command: 'dashIndent' }
+        ],
+        [familySelect, sizeSelect]
+      ]
+      return {
+        toolbarItems,
+        register(editor) {
+          editor.addCommand('wysiwyg', 'dashFontFamily', makeWwStyleHandler({ prop: 'font-family' }))
+          editor.addCommand('markdown', 'dashFontFamily', makeMdStyleHandler({ prop: 'font-family' }))
+          editor.addCommand('wysiwyg', 'dashFontSize', makeWwStyleHandler({ prop: 'font-size' }))
+          editor.addCommand('markdown', 'dashFontSize', makeMdStyleHandler({ prop: 'font-size' }))
+          editor.addCommand('wysiwyg', 'dashCenter', makeWwStyleHandler(DASH_FEATURE_CENTER))
+          editor.addCommand('markdown', 'dashCenter', makeMdStyleHandler(DASH_FEATURE_CENTER))
+          editor.addCommand('wysiwyg', 'dashIndent', makeWwStyleHandler(DASH_FEATURE_INDENT))
+          editor.addCommand('markdown', 'dashIndent', makeMdStyleHandler(DASH_FEATURE_INDENT))
+        }
+      }
+    }
+
     function createEditor(containerId, opts = {}) {
       const el = $(containerId)
       const isNarrow = window.innerWidth <= 860
+      const refreshWordCountBox = (text) => {
+        if(!opts.wordCountEl) return
+        const box = $(opts.wordCountEl)
+        if(!box) return
+        const stat = countArticleWords(text || '')
+        box.textContent = '字数 ' + stat.words + ' · 字符 ' + stat.chars
+      }
       if(canUseToastui) {
         try {
           const colorPlugin = getColorSyntaxPlugin()
-          const editor = new toastui.Editor({
+          const enhancement = opts.enhanced ? buildPostEditorEnhancement() : null
+          const editorOpts = {
             el,
             height: (isNarrow ? (opts.mobileHeight || 320) : (opts.height || 460)) + 'px',
             initialEditType: opts.initialEditType || 'wysiwyg',
@@ -422,10 +713,21 @@
             language: 'zh-CN',
             usageStatistics: false,
             plugins: colorPlugin ? [colorPlugin] : []
-          })
+          }
+          if(enhancement) editorOpts.toolbarItems = enhancement.toolbarItems
+          const editor = new toastui.Editor(editorOpts)
+          if(enhancement) enhancement.register(editor)
+          let wordCountTimer = null
+          if(opts.wordCountEl) {
+            editor.on('change', () => {
+              clearTimeout(wordCountTimer)
+              wordCountTimer = setTimeout(() => refreshWordCountBox(editor.getMarkdown()), 200)
+            })
+            refreshWordCountBox(editor.getMarkdown())
+          }
           return {
             toastui: true,
-            setMarkdown(v) { editor.setMarkdown(v || '') },
+            setMarkdown(v) { editor.setMarkdown(v || ''); refreshWordCountBox(v || '') },
             getMarkdown() { return editor.getMarkdown() || '' },
             changeMode(mode) { try { editor.changeMode(mode, true) } catch(e) { console.warn(e) } }
           }
@@ -438,9 +740,13 @@
       ta.rows = opts.fallbackRows || 12
       ta.placeholder = '（富文本编辑器加载失败，已回退为 Markdown 源码模式）'
       el.appendChild(ta)
+      if(opts.wordCountEl) {
+        ta.addEventListener('input', () => refreshWordCountBox(ta.value))
+        refreshWordCountBox(ta.value)
+      }
       return {
         toastui: false,
-        setMarkdown(v) { ta.value = v || '' },
+        setMarkdown(v) { ta.value = v || ''; refreshWordCountBox(ta.value) },
         getMarkdown() { return ta.value },
         changeMode() {}
       }
@@ -451,7 +757,7 @@
     function ensureEditor(key) {
       if(editors[key]) return editors[key]
       if(key === 'post') {
-        editors.post = createEditor('postEditor', { height: 520, mobileHeight: 340, fallbackRows: 14 })
+        editors.post = createEditor('postEditor', { height: 520, mobileHeight: 340, fallbackRows: 14, enhanced: true, wordCountEl: 'postWordCount' })
       } else if(key === 'gb') {
         editors.gb = createEditor('gbEditor', { height: 420, mobileHeight: 300 })
         editors.gb.setMarkdown(gbContentValue)
@@ -521,25 +827,81 @@
       tip.textContent = '图片加载失败，请检查地址是否正确。'
     })
 
+    // 安全解析文章 meta（字符串或对象）
+    function postMetaOf(post) {
+      let meta = post && post.meta
+      if(typeof meta === 'string') { try { meta = JSON.parse(meta) } catch { meta = {} } }
+      if(!meta || typeof meta !== 'object' || Array.isArray(meta)) meta = {}
+      return meta
+    }
+
+    // 汇总所有文章的标签/合集，填充输入框的联想候选项
+    function fillPostSuggestions(posts) {
+      const tagSet = new Set(), seriesSet = new Set()
+      ;(posts || []).forEach(post => {
+        const meta = postMetaOf(post)
+        if(Array.isArray(meta.tags)) meta.tags.forEach(t => { if(typeof t === 'string' && t.trim()) tagSet.add(t.trim()) })
+        if(typeof meta.series === 'string' && meta.series.trim()) seriesSet.add(meta.series.trim())
+      })
+      const fill = (listId, values) => {
+        const list = $(listId)
+        if(!list) return
+        list.innerHTML = values.map(v => '<option value="' + esc(v) + '"></option>').join('')
+      }
+      fill('postTagsList', [...tagSet].slice(0, 200))
+      fill('postSeriesList', [...seriesSet].slice(0, 100))
+    }
+
+    // 解析标签输入：支持中英文逗号/分号/顿号分隔，去重，最多 20 个
+    function parseTagInput(value) {
+      const seen = new Set(), out = []
+      String(value || '').split(/[,，;；、]+/).forEach(part => {
+        const t = part.trim().slice(0, 50)
+        if(!t || seen.has(t)) return
+        seen.add(t)
+        if(out.length < 20) out.push(t)
+      })
+      return out
+    }
+
+    // 读取合集序号：留空返回 ''（清除），否则取 0~999 的整数
+    function readSeriesOrder() {
+      const v = $('postSeriesOrder').value.trim()
+      if(v === '') return ''
+      const n = Number(v)
+      if(!Number.isFinite(n)) return ''
+      return Math.min(999, Math.max(0, Math.round(n)))
+    }
+
     function renderPostList(posts) {
-      $('postList').innerHTML = posts.length ? posts.map(post => `
+      $('postList').innerHTML = posts.length ? posts.map(post => {
+        const meta = postMetaOf(post)
+        const tags = Array.isArray(meta.tags) ? meta.tags : []
+        const series = typeof meta.series === 'string' ? meta.series.trim() : ''
+        const extra = []
+        if(series) extra.push('合集：' + esc(series))
+        if(tags.length) extra.push('标签：' + esc(tags.join(' / ')))
+        return `
         <div class="post-item">
           <div>
             <strong>${esc(post.title)}</strong>
+            ${meta.pinned === true || meta.pinned === 'true' ? '<span class="badge pin" style="margin-left:8px">置顶</span>' : ''}
             ${post.status === 'draft' ? '<span class="badge warn" style="margin-left:8px">草稿</span>' : ''}
             <div class="meta">${esc(post.slug)} · 创建于 ${esc(String(post.created_at || '').replace('T', ' ').slice(0, 16))}</div>
+            ${extra.length ? '<div class="meta">' + extra.join(' · ') + '</div>' : ''}
           </div>
           <div class="actions">
             <button class="small" onclick="editPost(${post.id})">编辑</button>
             <button class="danger small" onclick="deletePost(${post.id})">删除</button>
           </div>
         </div>
-      `).join('') : '<p class="muted">暂无文章，可在左侧新建，或先导入已有文章。</p>'
+      `}).join('') : '<p class="muted">暂无文章，可在左侧新建，或先导入已有文章。</p>'
     }
 
     async function loadPosts() {
       try {
         const posts = await apiJson('/api/admin/posts', {headers: {'Authorization': ADMIN_TOKEN}})
+        fillPostSuggestions(posts)
         renderPostList(posts)
       } catch(e) {
         $('postList').innerHTML = '<p class="muted">文章加载失败：' + esc(e.message) + '</p>'
@@ -555,12 +917,14 @@
         $('postTitle').value = post.title
         $('postExcerpt').value = post.excerpt || ''
         $('postStatus').value = post.status === 'draft' ? 'draft' : 'published'
-        let meta = {}
-        try { meta = post.meta ? JSON.parse(post.meta) : {} } catch {}
-        if(!meta || typeof meta !== 'object' || Array.isArray(meta)) meta = {}
+        const meta = postMetaOf(post)
         $('postCover').value = meta.image || ''
         $('postPassword').value = meta.password || ''
         $('postPasswordHint').value = meta.passwordHint || ''
+        $('postTags').value = Array.isArray(meta.tags) ? meta.tags.join(', ') : (typeof meta.tags === 'string' ? meta.tags : '')
+        $('postPinned').checked = meta.pinned === true || meta.pinned === 'true' || meta.pinned === 1
+        $('postSeries').value = typeof meta.series === 'string' ? meta.series : ''
+        $('postSeriesOrder').value = (typeof meta.seriesOrder === 'number' || typeof meta.seriesOrder === 'string') && meta.seriesOrder !== '' ? meta.seriesOrder : ''
         updatePostCoverPreview()
         const api = ensureEditor('post')
         api.setMarkdown(post.content || '')
@@ -604,7 +968,11 @@
         meta: {
           image: $('postCover').value.trim(),
           password: $('postPassword').value.trim(),
-          passwordHint: $('postPasswordHint').value.trim()
+          passwordHint: $('postPasswordHint').value.trim(),
+          tags: parseTagInput($('postTags').value),
+          pinned: $('postPinned').checked,
+          series: $('postSeries').value.trim(),
+          seriesOrder: readSeriesOrder()
         }
       }
       if(!postData.slug || !postData.title) { alert('slug 和标题不能为空'); return }
@@ -640,6 +1008,10 @@
       $('postCover').value = ''
       $('postPassword').value = ''
       $('postPasswordHint').value = ''
+      $('postTags').value = ''
+      $('postPinned').checked = false
+      $('postSeries').value = ''
+      $('postSeriesOrder').value = ''
       updatePostCoverPreview()
       $('postStatus').value = 'published'
       const api = ensureEditor('post')
