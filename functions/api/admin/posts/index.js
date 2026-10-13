@@ -6,7 +6,12 @@ export async function onRequestGet(context) {
   const authFail = await authCheck(request, env)
   if(authFail) return authFail
 
-  const { results } = await env.DB.prepare("SELECT id, title, slug, status, created_at, meta FROM posts WHERE status != 'deleted' ORDER BY created_at DESC, id DESC").all()
+  // ?trash=1 返回回收站（软删除）文章列表，默认返回正常文章列表
+  const trash = new URL(request.url).searchParams.get("trash") === "1"
+  const sql = trash
+    ? "SELECT id, title, slug, status, created_at, updated_at, meta FROM posts WHERE status = 'deleted' ORDER BY updated_at DESC, id DESC"
+    : "SELECT id, title, slug, status, created_at, meta FROM posts WHERE status != 'deleted' ORDER BY created_at DESC, id DESC"
+  const { results } = await env.DB.prepare(sql).all()
   return Response.json(results)
 }
 

@@ -66,3 +66,33 @@ export async function onRequestDelete(context) {
   await env.DB.prepare("UPDATE posts SET status='deleted', updated_at=CURRENT_TIMESTAMP WHERE id = ?").bind(postId).run()
   return Response.json({success: true, message: "文章已删除，发布后从博客移除"})
 }
+
+export async function onRequestPost(context) {
+  // 回收站恢复：POST {action:"restore"}
+  const { request, env, params } = context
+  const authFail = await authCheck(request, env)
+  if(authFail) return authFail
+  const postId = Number(params.id)
+  if(!postId) return new Response("文章ID非法", {status:400})
+
+  let body = {}
+  try { body = await request.json() } catch {}
+  if (body.action !== "restore") {
+    return new Response(JSON.stringify({success: false, message: "未知操作"}), {status: 400})
+  }
+
+  const existing = await env.DB.prepare("SELECT id, slug, status FROM posts WHERE id = ?").bind(postId).first()
+  if (!existing) return new Response("文章不存在", {status: 404})
+  if (existing.status !== "deleted") {
+    return new Response(JSON.stringify({success: false, message: "该文章不在回收站中"}), {status: 400})
+  }
+
+  // 同 slug 的未删除文章冲突检查（slug 全局唯一，正常不会出现）
+  const clash = await env.DB.prepare("SELECT id FROM posts WHERE slug = ? AND id != ? AND status != 'deleted'").bind(existing.slug, postId).first()
+  if (clash) {
+    return new Response(JSON.stringify({success: false, message: "存在同 slug 的文章，无法恢复"}), {status: 409})
+  }
+
+  await env.DB.prepare("UPDATE posts SET status='published', updated_at=CURRENT_TIMESTAMP WHERE id = ?").bind(postId).run()
+  return Response.json({success: true, message: "已恢复到文章列表，点击「发布博客」后重新出现在博客上"})
+}

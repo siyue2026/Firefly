@@ -188,7 +188,11 @@
           </div>
         </div>
         <div class="card">
-          <h3>文章列表</h3>
+          <div class="card-head">
+            <h3 id="postListTitle">文章列表</h3>
+            <button class="ghost small" id="postTrashBtn">回收站</button>
+          </div>
+          <p class="hint" id="postTrashHint" hidden style="margin:6px 0 12px">回收站中的文章已从博客移除，可一键恢复；恢复后点击右上角「发布博客」即可重新出现在博客上。</p>
           <div id="postList"></div>
         </div>
       </div>
@@ -933,7 +937,24 @@
       return Math.min(999, Math.max(0, Math.round(n)))
     }
 
+    let postTrashMode = false
+
     function renderPostList(posts) {
+      if(postTrashMode) {
+        $('postList').innerHTML = posts.length ? posts.map(post => `
+        <div class="post-item">
+          <div>
+            <strong>${esc(post.title)}</strong>
+            <span class="badge muted" style="margin-left:8px">已删除</span>
+            <div class="meta">${esc(post.slug)} · 删除于 ${esc(String(post.updated_at || '').replace('T', ' ').slice(0, 16))}</div>
+          </div>
+          <div class="actions">
+            <button class="small" onclick="restorePost(${post.id})">恢复</button>
+          </div>
+        </div>
+      `).join('') : '<p class="muted">回收站是空的。</p>'
+        return
+      }
       $('postList').innerHTML = posts.length ? posts.map(post => {
         const meta = postMetaOf(post)
         const tags = Array.isArray(meta.tags) ? meta.tags : []
@@ -960,10 +981,12 @@
 
     async function loadPosts() {
       try {
-        const posts = await apiJson('/api/admin/posts', {headers: {'Authorization': ADMIN_TOKEN}})
-        fillPostSuggestions(posts)
-        postTitleBySlug = {}
-        for(const p of posts) if(p.slug) postTitleBySlug[p.slug] = p.title
+        const posts = await apiJson('/api/admin/posts' + (postTrashMode ? '?trash=1' : ''), {headers: {'Authorization': ADMIN_TOKEN}})
+        if(!postTrashMode) {
+          fillPostSuggestions(posts)
+          postTitleBySlug = {}
+          for(const p of posts) if(p.slug) postTitleBySlug[p.slug] = p.title
+        }
         renderPostList(posts)
       } catch(e) {
         $('postList').innerHTML = '<p class="muted">文章加载失败：' + esc(e.message) + '</p>'
@@ -1010,7 +1033,7 @@
     }
 
     window.deletePost = async (postId) => {
-      if(!confirm('确定删除这篇文章？发布后将从博客移除。')) return
+      if(!confirm('确定删除这篇文章？删除后可在「回收站」中找回；点击「发布博客」后从博客移除。')) return
       try {
         await apiJson(`/api/admin/posts/${postId}`, {method: 'DELETE', headers: {'Authorization': ADMIN_TOKEN}})
         if(currentEditingPostId === postId) resetForm()
@@ -1019,6 +1042,28 @@
         alert('删除失败：' + e.message)
       }
     }
+
+    window.restorePost = async (postId) => {
+      try {
+        const r = await apiJson(`/api/admin/posts/${postId}`, {
+          method: 'POST',
+          headers: {'Authorization': ADMIN_TOKEN, 'Content-Type': 'application/json'},
+          body: JSON.stringify({action: 'restore'})
+        })
+        alert(r.message || '已恢复')
+        loadPosts()
+      } catch(e) {
+        alert('恢复失败：' + e.message)
+      }
+    }
+
+    $('postTrashBtn').addEventListener('click', () => {
+      postTrashMode = !postTrashMode
+      $('postListTitle').innerText = postTrashMode ? '回收站' : '文章列表'
+      $('postTrashBtn').innerText = postTrashMode ? '返回文章列表' : '回收站'
+      $('postTrashHint').hidden = !postTrashMode
+      loadPosts()
+    })
 
     $('savePostBtn').addEventListener('click', async () => {
       const postData = {
