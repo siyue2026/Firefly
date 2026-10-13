@@ -1,0 +1,5 @@
+# 旧地址跳转表（Cloudflare Pages 边缘 301）
+# 「咫尺之间」旧版（zhichizhijian）已并入新版「【渐温】咫尺之间」（zhichizhijian261010），
+# 旧链接 301 跳转到新地址，保证收藏/分享的旧网址继续可用。
+/posts/zhichizhijian/ /posts/zhichizhijian261010/ 301
+/posts/zhichizhijian /posts/zhichizhijian261010/ 301
