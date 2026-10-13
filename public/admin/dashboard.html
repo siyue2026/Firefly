@@ -24,6 +24,7 @@
     button.ghost{background:#fff;color:#374151;border:1px solid #d1d5db}
     button.danger{background:#ef4444}
     button.small{padding:6px 12px;font-size:13px}
+    .btn-a{display:inline-flex;align-items:center;justify-content:center;padding:10px 20px;border-radius:6px;border:1px solid #d1d5db;color:#374151;background:#fff;font-size:14px;cursor:pointer;text-decoration:none}
     .btn-row{margin-top:6px;display:flex;flex-wrap:wrap;gap:8px}
     .post-item{padding:1rem 0;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;gap:10px}
     .tabs{display:flex;gap:4px;margin-bottom:1.5rem;border-bottom:1px solid #e5e7eb;overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -83,6 +84,7 @@
       .cols2{grid-template-columns:1fr}
       button{min-height:40px;padding:10px 16px}
       button.small{min-height:36px}
+      .btn-a{min-height:40px;padding:10px 16px}
       input,select{min-height:42px}
       .post-item,.album-item,.song-item,.dyn-item{flex-direction:column;align-items:stretch}
       .actions{width:100%}
@@ -107,6 +109,7 @@
         <span id="publishStatus" hidden></span>
         <button id="publishResetBtn" class="ghost small" hidden>重置状态</button>
         <button id="publishBtn" title="同步线上数据并部署到博客（点击后由云端自动构建并部署，任何电脑均可操作）">发布博客</button>
+        <a class="btn-a" href="https://firefly-cv5.pages.dev" target="_blank" rel="noopener" title="博客的固定地址（每次发布都会更新这个地址的内容，地址本身不会变化）">打开博客</a>
         <button class="ghost" onclick="logout()">退出登录</button>
       </div>
     </div>
@@ -1596,6 +1599,10 @@
     })
 
     // ==================== 快捷发布 ====================
+    // 博客固定地址：每次发布都会更新这个地址的内容，地址本身永远不变。
+    // 页面上的 https://<随机码>.firefly-cv5.pages.dev 是每次部署生成的「临时快照」地址，仅用于立即查看本次更新。
+    const SITE_URL = 'https://firefly-cv5.pages.dev'
+
     function fmtPublishTime(iso) {
       try { return new Date(iso).toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'}) } catch(e) { return '' }
     }
@@ -1625,7 +1632,8 @@
       } else if(req.status === 'success') {
         btn.textContent = '发布博客'
         st.innerHTML = '✓ 发布完成 ' + esc(fmtPublishTime(req.finishedAt)) + '（约 1 分钟后 CDN 生效）'
-          + (req.deploymentUrl ? ' <a href="' + esc(req.deploymentUrl) + '" target="_blank" rel="noopener">查看本次部署</a>' : '')
+          + ' <a href="' + SITE_URL + '" target="_blank" rel="noopener">打开博客</a>'
+          + (req.deploymentUrl ? ' · <a href="' + esc(req.deploymentUrl) + '" target="_blank" rel="noopener" style="color:#9ca3af" title="每次发布生成的临时快照地址（仅本次部署，地址会变、旧的一般用不到）；请使用「打开博客」的固定地址">本次部署快照</a>' : '')
       } else if(req.status === 'failed') {
         btn.textContent = '重新发布'
         st.textContent = '✗ 发布失败 ' + fmtPublishTime(req.finishedAt) + '：' + (req.message || '未知错误')
