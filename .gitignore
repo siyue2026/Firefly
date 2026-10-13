@@ -50,3 +50,6 @@ package/
 
 # 本机专属文件（内含管理员令牌，不随仓库分发；云端发布见 .github/workflows/cloud-publish.yml）
 scripts/publish-watcher.cmd
+
+# 个人文章同步产物（由 D1 在构建时生成，含访问密码等敏感信息，不要提交到公开仓库）
+src/content/posts/zhichizhijian*.md
