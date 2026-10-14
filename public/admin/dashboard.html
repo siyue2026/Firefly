@@ -14,7 +14,7 @@
     .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;gap:12px}
     .header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     #publishStatus{font-size:12.5px;color:#6b7280;line-height:1.6;max-width:480px;word-break:break-word}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+    .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:2rem;align-items:start}
     .card{padding:1.5rem;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.08)}
     .card h3{margin-bottom:6px}
     .card-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
@@ -51,9 +51,14 @@
     a{color:#3b82f6;cursor:pointer}
     .actions{white-space:nowrap;display:flex;gap:8px}
     .editor-status-line{display:flex;justify-content:flex-end;margin:-4px 0 10px;font-size:12.5px;color:#888}
-    .toastui-editor-toolbar .dash-toolbar-btn{background-color:transparent;background-image:none!important;width:auto!important;min-width:42px;padding:0 8px!important;font-size:12.5px;color:#444;cursor:pointer}
+    .toastui-editor-toolbar .dash-toolbar-btn{background-color:transparent;background-image:none!important;width:auto!important;min-width:40px;padding:0 7px!important;font-size:12.5px;color:#444;cursor:pointer;white-space:nowrap}
     .toastui-editor-toolbar .dash-toolbar-btn:hover{color:#3b82f6}
-    .toastui-editor-toolbar .dash-toolbar-select{width:auto!important;max-width:118px;height:26px;min-height:0!important;margin:5px 3px 0!important;padding:0 2px!important;font-size:12px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#374151}
+    .toastui-editor-toolbar .dash-toolbar-select{width:auto!important;max-width:62px;height:26px;min-height:0!important;margin:5px 0 0!important;padding:0 2px!important;font-size:12px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#374151}
+    /* 工具栏项目较多时自动换行，避免把编辑区（乃至整页）撑宽；窄屏兜底允许横向滚动 */
+    .toastui-editor-toolbar{height:auto;overflow-x:auto}
+    .toastui-editor-defaultUI-toolbar{flex-wrap:wrap;height:auto;min-height:45px;padding:0 12px}
+    .toastui-editor-defaultUI-toolbar .toastui-editor-toolbar-divider{margin:14px 6px}
+    .toastui-editor-defaultUI-toolbar button{margin-left:0;margin-right:0}
     /* ---- 评论管理 ---- */
     .cm-toolbar{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin:12px 0 6px}
     .cm-chips{display:flex;gap:6px;flex-wrap:wrap}
@@ -75,7 +80,7 @@
     .cm-pager{display:flex;gap:12px;align-items:center;justify-content:center;margin-top:1rem}
     @media (max-width:860px){
       .container{margin:0.8rem auto;padding:0 0.7rem}
-      .grid{grid-template-columns:1fr;gap:1.2rem}
+      .grid{grid-template-columns:minmax(0,1fr);gap:1.2rem}
       .card{padding:1rem}
       .header{flex-direction:column;align-items:flex-start}
       .header h1{font-size:1.3rem}
@@ -91,7 +96,6 @@
       .actions button{flex:1}
       .tabs{margin-bottom:1rem}
       .tab{padding:10px 13px;font-size:14px}
-      .toastui-editor-defaultUI .toastui-editor-toolbar{overflow-x:auto}
     }
     @media (max-width:860px){
       .cm-toolbar{flex-direction:column;align-items:stretch}
@@ -173,7 +177,7 @@
               <label class="cb" style="margin-top:14px"><input type="checkbox" id="postPinned"> 置顶这篇文章（列表页优先展示）</label>
             </div>
           </div>
-          <label class="field-label">正文（所见即所得：可设置颜色、加粗、居中、字体字号、首行缩进，插入图片，无需写代码）</label>
+          <label class="field-label">正文（所见即所得：可设置颜色、加粗、居中、字体字号、首行缩进；插入的图片会自动上传到云端，其他电脑/手机上也能显示）</label>
           <div id="postEditor"></div>
           <div class="editor-status-line"><span id="postWordCount">字数 0 · 字符 0</span></div>
           <p class="hint" id="postModeHint" hidden style="margin-top:8px"></p>
@@ -190,7 +194,10 @@
         <div class="card">
           <div class="card-head">
             <h3 id="postListTitle">文章列表</h3>
-            <button class="ghost small" id="postTrashBtn">回收站</button>
+            <div class="actions">
+              <button class="danger small" id="postTrashEmptyBtn" hidden>清空回收站</button>
+              <button class="ghost small" id="postTrashBtn">回收站</button>
+            </div>
           </div>
           <p class="hint" id="postTrashHint" hidden style="margin:6px 0 12px">回收站中的文章已从博客移除，可一键恢复；恢复后点击右上角「发布博客」即可重新出现在博客上。</p>
           <div id="postList"></div>
@@ -499,6 +506,60 @@
       } catch(e) { return null }
     }
 
+    // ==================== 编辑器图片上传（本地图片 → 云端 /img/ 网址） ====================
+    // 不改的话 ToastUI 会把本地图片转成 base64 内嵌进正文，体积巨大，且换设备/手机浏览时容易出问题；
+    // 这里改为：压缩后上传到云端数据库（/api/admin/images），正文里只写入 /img/<id> 网址，任何设备都能显示。
+    function canvasToBlob(canvas, type, quality) {
+      return new Promise(resolve => {
+        try { canvas.toBlob(blob => resolve(blob), type, quality) } catch(e) { resolve(null) }
+      })
+    }
+
+    async function compressImageForUpload(file) {
+      const TARGET = 700 * 1024    // 目标体积：700KB 以内
+      const MAX_DIM = 1600         // 最长边压缩到 1600px 以内
+      try {
+        if(file.type === 'image/gif') return file            // GIF 保留动画，原样上传
+        if(file.size <= 380 * 1024) return file              // 小图直接上传，不重编码
+        let bmp
+        try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }) }
+        catch(e) { bmp = await createImageBitmap(file) }
+        const scale = Math.min(1, MAX_DIM / Math.max(bmp.width, bmp.height))
+        const w = Math.max(1, Math.round(bmp.width * scale))
+        const h = Math.max(1, Math.round(bmp.height * scale))
+        const canvas = document.createElement('canvas')
+        canvas.width = w
+        canvas.height = h
+        canvas.getContext('2d').drawImage(bmp, 0, 0, w, h)
+        if(bmp.close) bmp.close()
+        let quality = 0.85
+        let out = await canvasToBlob(canvas, 'image/webp', quality)
+        while(out && out.size > TARGET && quality > 0.45) {
+          quality -= 0.1
+          out = await canvasToBlob(canvas, 'image/webp', quality)
+        }
+        if(!out || out.size >= file.size) return file        // 压缩没变小就保留原图
+        return out
+      } catch(e) {
+        return file   // 压缩失败时原样上传（服务端仍会校验大小）
+      }
+    }
+
+    async function uploadEditorImage(file) {
+      const blob = await compressImageForUpload(file)
+      const type = blob.type || 'image/png'
+      const ext = type === 'image/jpeg' ? 'jpg' : (type.split('/')[1] || 'png')
+      const base = String(file.name || 'image').replace(/\.[^.]*$/, '') || 'image'
+      const fd = new FormData()
+      fd.append('file', blob, base.slice(0, 80) + '.' + ext)
+      const res = await fetch('/api/admin/images', {method: 'POST', headers: {'Authorization': ADMIN_TOKEN}, body: fd})
+      let data = null
+      try { data = await res.json() } catch(e) {}
+      if(!res.ok || !data || !data.success) throw new Error((data && data.message) || ('HTTP ' + res.status))
+      return data.url
+    }
+    // ==================== 编辑器图片上传（结束） ====================
+
     // ==================== 文章编辑器增强：撤销/重做/居中/字体字号/首行缩进 ====================
     // 实现说明：字体、字号、居中、缩进统一用 <span style="..."> 内联样式表达（与颜色功能机制一致），
     // 保证在 所见即所得 / Markdown 两种模式下以及博客渲染时都能正确往返。
@@ -723,21 +784,16 @@
       const familySelect = makeDashToolbarSelect('dashFontFamily', '字体', '字体（对选中内容或光标所在段落生效）', DASH_FONT_FAMILIES, 'dashFontFamily')
       const sizeSelect = makeDashToolbarSelect('dashFontSize', '字号', '字号（对选中内容或光标所在段落生效）', DASH_FONT_SIZES, 'dashFontSize')
       const toolbarItems = [
-        ['heading', 'bold', 'italic', 'strike'],
-        ['hr', 'quote'],
-        ['ul', 'ol', 'task', 'indent', 'outdent'],
-        ['table', 'image', 'link'],
-        ['code', 'codeblock'],
-        ['scrollSync'],
+        ['heading', 'bold', 'italic'],
         [
           { name: 'dashUndo', className: 'dash-toolbar-btn', text: '撤销', tooltip: '撤销（Ctrl+Z）', command: 'undo' },
-          { name: 'dashRedo', className: 'dash-toolbar-btn', text: '重做', tooltip: '重做（Ctrl+Shift+Z）', command: 'redo' }
-        ],
-        [
+          { name: 'dashRedo', className: 'dash-toolbar-btn', text: '重做', tooltip: '重做（Ctrl+Shift+Z）', command: 'redo' },
           { name: 'dashCenter', className: 'dash-toolbar-btn', text: '居中', tooltip: '居中 / 取消居中（对选中内容或光标所在段落生效）', command: 'dashCenter' },
-          { name: 'dashIndent', className: 'dash-toolbar-btn', text: '首行缩进', tooltip: '首行缩进两字符 / 取消（对选中内容或光标所在段落生效）', command: 'dashIndent' }
+          { name: 'dashIndent', className: 'dash-toolbar-btn', text: '缩进', tooltip: '首行缩进两字符 / 取消（对选中内容或光标所在段落生效）', command: 'dashIndent' }
         ],
-        [familySelect, sizeSelect]
+        [familySelect, sizeSelect, 'image', 'hr'],
+        ['link', 'quote', 'ul', 'ol', 'task', 'indent', 'outdent', 'strike'],
+        ['table', 'code', 'codeblock', 'scrollSync']
       ]
       return {
         toolbarItems,
@@ -780,6 +836,15 @@
           if(enhancement) editorOpts.toolbarItems = enhancement.toolbarItems
           const editor = new toastui.Editor(editorOpts)
           if(enhancement) enhancement.register(editor)
+          // 本地图片 / 剪贴板图片：压缩后上传到云端，正文只插入 /img/ 网址（替代默认的 base64 内嵌）
+          editor.addHook('addImageBlobHook', (blob, callback) => {
+            if(!(blob instanceof Blob)) { alert('无法读取所选图片文件'); return }
+            uploadEditorImage(blob).then(url => {
+              callback(url, String(blob.name || 'image').replace(/\.[^.]*$/, '') || 'image')
+            }).catch(e => {
+              alert('图片上传失败：' + (e && e.message ? e.message : e))
+            })
+          })
           let wordCountTimer = null
           if(opts.wordCountEl) {
             editor.on('change', () => {
@@ -938,9 +1003,11 @@
     }
 
     let postTrashMode = false
+    let trashPostCount = 0
 
     function renderPostList(posts) {
       if(postTrashMode) {
+        trashPostCount = posts.length
         $('postList').innerHTML = posts.length ? posts.map(post => `
         <div class="post-item">
           <div>
@@ -1057,13 +1124,27 @@
       }
     }
 
+    window.emptyTrash = async () => {
+      if(!trashPostCount) { alert('回收站已经是空的。'); return }
+      if(!confirm('确定清空回收站？将永久删除其中的 ' + trashPostCount + ' 篇文章，删除后无法恢复。')) return
+      try {
+        const r = await apiJson('/api/admin/posts?trash=1', {method: 'DELETE', headers: {'Authorization': ADMIN_TOKEN}})
+        alert(r.message || '已清空回收站')
+        loadPosts()
+      } catch(e) {
+        alert('清空回收站失败：' + e.message)
+      }
+    }
+
     $('postTrashBtn').addEventListener('click', () => {
       postTrashMode = !postTrashMode
       $('postListTitle').innerText = postTrashMode ? '回收站' : '文章列表'
       $('postTrashBtn').innerText = postTrashMode ? '返回文章列表' : '回收站'
       $('postTrashHint').hidden = !postTrashMode
+      $('postTrashEmptyBtn').hidden = !postTrashMode
       loadPosts()
     })
+    $('postTrashEmptyBtn').addEventListener('click', () => { window.emptyTrash() })
 
     $('savePostBtn').addEventListener('click', async () => {
       const postData = {

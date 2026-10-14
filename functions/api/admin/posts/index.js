@@ -15,6 +15,21 @@ export async function onRequestGet(context) {
   return Response.json(results)
 }
 
+// 清空回收站：DELETE ?trash=1，永久删除所有软删除文章（status='deleted'）。
+// 必须带 trash=1 参数，防止误删正常文章。
+export async function onRequestDelete(context) {
+  const { request, env } = context
+  const authFail = await authCheck(request, env)
+  if(authFail) return authFail
+
+  if (new URL(request.url).searchParams.get("trash") !== "1") {
+    return new Response(JSON.stringify({success: false, message: "缺少 trash=1 参数，已拒绝删除"}), {status: 400})
+  }
+  const r = await env.DB.prepare("DELETE FROM posts WHERE status = 'deleted'").run()
+  const n = r.meta.changes || 0
+  return Response.json({ success: true, deleted: n, message: "已清空回收站（共删除 " + n + " 篇文章）" })
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context
   const authFail = await authCheck(request, env)
